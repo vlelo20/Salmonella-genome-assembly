@@ -1,8 +1,8 @@
-**# Genome Assembly and Reference Comparison of *Salmonella enterica***
+# **Genome Assembly and Reference Comparison of *Salmonella enterica***
 Author: Vian Lelo
 Date created: January 20th, 2026
 
-**## Introduction**
+## **Introduction**
 
 Whole‑genome assembly of bacterial pathogens has become a central tool in microbiology, epidemiology, and public health. _Salmonella enterica_ is a prokaryotic, Gram‑negative bacterial pathogen responsible for a substantial burden of foodborne disease worldwide, with infections ranging from self‑limiting gastroenteritis to invasive systemic disease. Its genome typically consists of a single circular chromosome of ~4.5–5.0 Mb, often accompanied by one or more plasmids that can carry virulence and antimicrobial resistance determinants (Baker and Dougan 2007). High‑quality, complete genome assemblies for _S. enterica_ enable precise serovar determination, outbreak reconstruction, plasmid tracking, and comparative genomics, all of which depend on accurate reconstruction of both chromosomal and extrachromosomal replicons (Zhao et al. 2023; Wick, Judd, and Holt 2023). 
 
@@ -18,7 +18,7 @@ Aligning the assembled genome to a reference is essential for variant calling an
 
 In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q20+ reads involves balancing the strengths and limitations of long‑read sequencing. ONT provides long reads that enable complete, structurally accurate assemblies and plasmid resolution, but residual basecalling errors necessitate careful polishing and appropriate variant calling strategies. Meta‑analyses and recent methodological papers support the use of long‑read assemblers like Flye, ONT‑aware polishers like Medaka, and long‑read aligners like minimap2 as a robust foundation for bacterial genome assembly and comparative genomics. This assignment will apply these principles to generate a consensus _S. enterica_ genome, align it to a reference, call variants, and visualize the results.
 
-**## Methods proposed:**
+## **Methods proposed:**
 
 ### Data and overall strategy
 The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download an appropriate _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
@@ -44,7 +44,7 @@ Variant calling will be carried out using a long‑read‑aware variant caller u
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
 
 
-**## References:**
+## **References:**
 
 Baker, Stephen, and Gordon Dougan. 2007. “The Genome of Salmonella Enterica Serovar Typhi.” Clinical Infectious Diseases 45(Supplement_1):S29–33. doi:10.1086/518143.
 
