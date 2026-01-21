@@ -1,7 +1,7 @@
-#Genome Assembly and Reference Comparison of *Salmonella enterica*
+# Genome Assembly and Reference Comparison of *Salmonella enterica*
 Author: Vian Lelo
 
-Introduction
+## Introduction
 
 Whole‑genome assembly of bacterial pathogens has become a central tool in microbiology, epidemiology, and public health. Salmonella enterica is a prokaryotic, Gram‑negative bacterial pathogen responsible for a substantial burden of foodborne disease worldwide, with infections ranging from self‑limiting gastroenteritis to invasive systemic disease. Its genome typically consists of a single circular chromosome of ~4.5–5.0 Mb, often accompanied by one or more plasmids that can carry virulence and antimicrobial resistance determinants (Baker and Dougan 2007). High‑quality, complete genome assemblies for S. enterica enable precise serovar determination, outbreak reconstruction, plasmid tracking, and comparative genomics, all of which depend on accurate reconstruction of both chromosomal and extrachromosomal replicons (Zhao et al. 2023; Wick, Judd, and Holt 2023). 
 
@@ -17,29 +17,32 @@ Aligning the assembled genome to a reference is essential for variant calling an
 
 In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q20+ reads involves balancing the strengths and limitations of long‑read sequencing. ONT provides long reads that enable complete, structurally accurate assemblies and plasmid resolution, but residual basecalling errors necessitate careful polishing and appropriate variant calling strategies. Meta‑analyses and recent methodological papers support the use of long‑read assemblers like Flye, ONT‑aware polishers like Medaka, and long‑read aligners like minimap2 as a robust foundation for bacterial genome assembly and comparative genomics. This assignment will apply these principles to generate a consensus S. enterica genome, align it to a reference, call variants, and visualize the results.
 
-#Methods proposed:
+## Methods proposed:
+### Data and overall strategy
+The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download an appropriate _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
 
-##Quality control and read filtering
-Initial quality control will be performed using NanoPlot (v1.x) to assess read length distributions, quality scores, and yield, confirming that the N50 falls within the expected 5–15 kb range and identifying any obvious issues with the sequencing run. If necessary, reads will be filtered using Filtlong (v0.x) to remove very short or low‑quality reads, which can reduce noise and computational burden without compromising assembly quality. For example, a minimum read length of 1,000 bp and retention of the top 70-80% of bases by quality may be used (), consistent with common ONT bacterial assembly workflows. Downsampling may be considered to reduce runtime and memory usage (Wick, Judd, and Holt 2023). 
+### Quality control and read filtering
+Initial quality control will be performed using NanoPlot (v1.46.2) to assess read length distribution, and quality scores, confirming that the N50 falls within the expected 5–15 kb range and identifying any obvious issues with the sequencing run. If necessary, reads will be filtered using NanoFilt (v2.8.0) to remove very short or low‑quality reads, which can reduce noise and computational burden without compromising assembly quality (Zhao et al. 2023). For example, a minimum read length of 1,000 bp and a Q<10 will be removed. The first and last 50 bases will be removed to retain clean data (Zhao et al. 2023). Downsampling may be considered to reduce run time and memory usage of 60-70x (Wick, Judd, and Holt 2023). 
 
-##De novo genome assembly
-De novo assembly will be performed using Flye (v2.9.6), a long‑read assembler that has been extensively benchmarked on ONT bacterial data and shown to produce highly contiguous assemblies. The preset "hq" and an expected genome size of 5 Mb will be set. Flye constructs a repeat graph from the long reads and resolves repeats using read length and coverage, making it well suited for S. enterica genomes that contain repetitive elements and plasmids. The expected outcome is a small number of contigs, ideally a single chromosomal contig and one or more plasmid contigs.
+### De novo genome assembly
+De novo assembly will be performed using Flye (v2.9.6), a long‑read assembler that has been extensively benchmarked on ONT bacterial data and shown to produce highly contiguous assemblies. The preset "hq" will be used as we have Q20+ reads. An expected genome size of 5 Mb will be set. Threads will be set to 14 keeping 8 to keep the machine responsive. Please adjust according to your machine. Flye constructs a repeat graph from the long reads and resolves repeats using read length and coverage, making it well suited for _S. enterica_ genomes that contain repetitive elements and plasmids. The expected outcome is a small number of contigs, ideally a single chromosomal contig and one or more plasmid contigs.
 
-##Assembly polishing
-To improve the base‑level accuracy of the Flye assembly, ONT‑specific polishing will be performed using Medaka (v2.2.0), which applies neural network models trained on ONT data to correct systematic errors. The appropriate Medaka model for R10/Q20+ chemistry (e.g.,  or similar, depending on the exact kit and basecaller) will be selected according to ONT documentation. Polishing will be performed by aligning the original ONT reads back to the Flye assembly using minimap2 (see below), followed by Medaka consensus calling to generate a polished assembly. If short‑read data were available, additional polishing with tools such as Polypolish or Pilon could be considered to further reduce residual errors, but for this assignment the focus will be on ONT‑only polishing, consistent with recent demonstrations that ONT alone can yield complete bacterial genomes.
+### Assembly polishing
+To improve the base‑level accuracy of the Flye assembly, ONT‑specific polishing will be performed using Medaka (v2.2.0), which applies neural network models trained on ONT data to correct systematic errors (Zhao et al. 2023). The appropriate Medaka model for R10/Q20+ chemistry will be selected according to ONT documentation. Polishing will be performed by aligning the original ONT reads back to the Flye assembly using minimap2, followed by Medaka consensus calling to generate a polished assembly. If short‑read data were available, additional polishing with tools such as Polypolish or Pilon could be considered to further reduce residual errors, but for this assignment the focus will be on ONT‑only polishing, consistent with recent demonstrations that ONT alone can yield complete bacterial genomes.
 
-##Reference genome retrieval
+### Reference genome retrieval
 A reference genome for Salmonella enterica will be downloaded from NCBI RefSeq, ideally matching the serovar of the sequenced isolate if known (e.g., S. enterica serovar Typhimurium LT2). The reference will be obtained in FASTA format along with its annotation (GenBank or GFF), enabling both sequence‑level and feature‑level comparisons. Using a well‑annotated RefSeq reference facilitates interpretation of variants in terms of genes, operons, and known virulence or resistance loci.
 
-##Alignment and variant calling
+### Alignment and variant calling
 Long‑read alignment will be performed using minimap2 (v2.28), which is widely regarded as the standard aligner for ONT reads due to its speed and accuracy. For read‑to‑assembly and read‑to‑reference alignments, the  preset will be used. The resulting SAM files will be converted to BAM, sorted, and indexed using Samtools (v1.21), which also provides basic statistics and depth information. To compare the polished assembly to the reference genome, the assembly itself may also be aligned to the reference using minimap2 in assembly‑to‑reference mode.
 
 Variant calling will be carried out using a long‑read‑aware variant caller using Medaka’s variant pipeline, both of which have been shown to perform well on ONT data. These tools take the minimap2‑aligned BAM files as input and produce VCF files containing SNVs and small indels. The choice of caller will be justified based on its performance in recent benchmarking studies and its suitability for ONT R10/Q20+ data. Variants will be filtered using recommended quality thresholds, and summary statistics (e.g., number of SNVs, indels, and their distribution across the genome) will be generated.
 
-##Visualization and comparative analysis
+### Visualization and comparative analysis
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions (e.g., low coverage, potential misassemblies). To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs. Whole‑genome comparison between the polished assembly and the reference will be performed using MUMmer4 (e.g.,  and ), providing dotplots and summary metrics such as average nucleotide identity, number of SNPs, and structural differences.
 
-References:
+## References:
+
 Baker, Stephen, and Gordon Dougan. 2007. “The Genome of Salmonella Enterica Serovar Typhi.” Clinical Infectious Diseases 45(Supplement_1):S29–33. doi:10.1086/518143.
 
 Chen, Zhao, David L. Erickson, and Jianghong Meng. 2020. “Benchmarking Long-Read Assemblers for Genomic Analyses of Bacterial Pathogens Using Oxford Nanopore Sequencing.” International Journal of Molecular Sciences 21(23):9161. doi:10.3390/ijms21239161.
