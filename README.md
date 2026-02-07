@@ -14,7 +14,7 @@ Several studies have systematically compared long‑read assemblers and polishin
 
 For this assignment, the focus is on ONT R10/Q20+ long reads with an N50 of 5–15 kb, which are well suited to de novo assembly of _S. enterica_. The key challenges in assembling such data include handling residual basecalling errors (particularly in homopolymers), correctly resolving repetitive regions and plasmids, and avoiding misassemblies that could confound downstream variant calling. Long‑read assemblers such as Flye are specifically designed to work with noisy long reads, constructing repeat graphs and leveraging read length to resolve complex regions (Oxford Nanopore Assembly using Flye 2025). However, even with improved Q20+ accuracy, ONT assemblies typically require polishing to reduce small indel and substitution errors that can impact gene prediction and variant analysis. Tools like Medaka, which use neural network models trained on ONT data, have been shown to substantially improve consensus accuracy when applied to ONT assemblies (Wick, Judd, and Holt 2023)
 
-Aligning the assembled genome to a reference is essential for variant calling and comparative analysis. Minimap2 has emerged as the standard aligner for long‑read data, offering high speed and accuracy for mapping ONT reads or assembled contigs to reference genomes. In contrast, short‑read aligners such as BWA‑MEM and Bowtie2 are not appropriate for ONT whole‑genome bacterial assemblies (Saada et al. 2024). Once alignments are generated, variant callers designed for long reads, such as clair3, can identify single‑nucleotide variants (SNVs) and small indels between the assembled _S. enterica_ genome and a reference. Visualization tools like IGV allow manual inspection of alignments and variants (Hall et al. 2024).
+Aligning the assembled genome to a reference is essential for variant calling and comparative analysis. Minimap2 has emerged as the standard aligner for long‑read data, offering high speed and accuracy for mapping ONT reads or assembled contigs to reference genomes. In contrast, short‑read aligners such as BWA‑MEM and Bowtie2 are not appropriate for ONT whole‑genome bacterial assemblies (Saada et al. 2024). Once alignments are generated, variant callers designed for long reads, such as medaka, can identify single‑nucleotide variants (SNVs) and small indels between the assembled _S. enterica_ genome and a reference. Visualization tools like IGV allow manual inspection of alignments and variants (Hall et al. 2024).
 
 In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q20+ reads involves balancing the strengths and limitations of long‑read sequencing. ONT provides long reads that enable complete, structurally accurate assemblies and plasmid resolution, but residual basecalling errors necessitate careful polishing and appropriate variant calling strategies. Meta‑analyses and recent methodological papers support the use of long‑read assemblers like Flye, ONT‑aware polishers like Medaka, and long‑read aligners like minimap2 as a robust foundation for bacterial genome assembly and comparative genomics. This assignment will apply these principles to generate a consensus _S. enterica_ genome, align it to a reference, call variants, and visualize the results.
 
@@ -142,17 +142,39 @@ awk 'BEGIN{cov=0;tot=0;sum=0}
        print "Mean_depth", sum/tot;
      }' results/plots/depth_ASM694v2.txt > results/align/ASM694v2.coverage_metrics.txt
 ```
-### Variant calling vs ASM694v2
-Variant calling will be carried out using a long‑read‑aware variant caller using clair3 (v1.0.10) with the ONT R10 model, which has been shown to provide high accuracy for bacterial long‑read variant calling (Hall et al. 2024). These tools take the minimap2‑aligned BAM files as input and produce VCF files containing SNVs and small indels. Variants will be filtered using default quality thresholds. 
-```
-bcftools mpileup -Ou \
-  -f results/ref/ASM694v2/ASM694v2_genomic.fna \
-  results/align/reads_vs_ASM694v2.bam | \
-bcftools call -mv -Oz \
-  -o results/vcf/variants_vs_ASM694v2.vcf.gz
+### Medaka-based variant calling on ONT reads against the ASM694v2 reference genome.
 
-tabix -p vcf results/vcf/variants_vs_ASM694v2.vcf.gz
+Variant calling was performed using Medaka (v2.0.1) in reads‑to‑reference mode on the raw ONT FASTQ file (SRR32410565.fastq) and the ASM694v2 reference genome (Hall et al. 2024). Within a dedicated medaka_env conda environment, Medaka was run with 4 CPU threads and default model auto‑selection; because the basecaller string could not be parsed from the input, Medaka fell back to its default R10.4.1 SUP model r1041_e82_400bps_sup_variant_v5.0.0, which is appropriate for 400 bp Q20+ R10.4.1 data. Before inference, Medaka confirmed that bundled versions of minimap2 (v2.30), samtools (v1.23), bcftools (v1.23), bgzip, and tabix met or exceeded its minimum requirements, ensuring consistency of downstream pileup and VCF operations.
+
+For variant calling, Medaka internally realigned the ONT reads to the ASM694v2 reference using minimap2 with the ONT long‑read preset (-x map-ont, 4 threads), reusing the existing FASTA index (ASM694v2_genomic.fna.fai) and minimap2 index (ASM694v2_genomic.fna.map-ont.mmi) where available. The reference (NC_003197.2 chromosome and NC_003277.2 plasmid) was processed in 1 Mb windows, with an internal inference chunk length of 10,000 bases; regions shorter than this threshold were “quarantined” and processed in a final pass to ensure complete coverage of both chromosomal and plasmid sequence. Reads were filtered using a minimum mapping quality threshold of 1, pileup‑based features were generated for each window (reporting median depths typically between ~130× and ~200× across the chromosome), and these features were passed to a bidirectional GRU neural network (two layers, 128 hidden units per direction) running at full precision on CPU to produce base‑level consensus probabilities. Medaka then combined predictions across overlapping windows, resolved non‑overlapping segments (reported in the log as “cannot be concatenated as there is no overlap and they do not abut”), and wrote the final variant calls and consensus to results/vcf/medaka_reads_only/medaka.annotated.vcf.
 ```
+conda deactivate  # until you see (base)
+conda create -n medaka_env -c conda-forge -c bioconda \
+  medaka=2.0 python=3.10 -y
+```
+```
+conda activate medaka_env
+cd ~/binf6110/assignment1
+```
+```
+medaka_variant \
+  -i data/raw/SRR32410565.fastq \
+  -r results/ref/ASM694v2/ASM694v2_genomic.fna \
+  -o results/vcf/medaka_reads_only \
+  -t 4
+```
+The resulting VCF was then sorted and indexed to enable efficient visualization and downstream analyses. Sorting by genomic coordinate was performed with bcftools, and a tabix index was created for random access:
+```
+# Sort Medaka VCF by CHROM and POS and compress
+bcftools sort \
+  results/vcf/medaka_reads_only/medaka.annotated.vcf \
+  -Oz -o results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz
+
+# Create tabix index for the sorted VCF
+tabix -p vcf results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz
+```
+The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tbi index) was used for variant exploration in IGV, summary statistics with bcftools, and downstream plotting of variant distributions along the S. enterica chromosome and plasmid.
+
 ### Assembly polishing
 To improve the base‑level accuracy of the Flye assembly, ONT‑specific polishing will be performed using Medaka (v2.2.0), which applies neural network models trained on ONT data to correct systematic errors (Zhao et al. 2023). The appropriate Medaka model is "sup" for R10/Q20+ chemistry with Q20+. Polishing will be performed by aligning the original ONT reads back to the Flye assembly using minimap2, followed by Medaka consensus calling to generate a polished assembly.
 
@@ -171,6 +193,7 @@ Oxford Nanopore Assembly using Flye. 2025. Retrieved January 18, 2026. https://r
 Hall, Michael B., Ryan R. Wick, Louise M. Judd, An N. Nguyen, Eike J. Steinig, Ouli Xie, Mark Davies, Torsten Seemann, Timothy P. Stinear, and Lachlan Coin. 2024. “Benchmarking Reveals Superiority of Deep Learning Variant Callers on Bacterial Nanopore Sequence Data.” eLife 13:RP98300. doi:10.7554/eLife.98300.
 
 Helm, R. Allen, Alison G. Lee, Harry D. Christman, and Stanley Maloy. 2003. “Genomic Rearrangements at Rrn Operons in Salmonella.” Genetics 165(3):951–59. doi:10.1093/genetics/165.3.951.
+
 
 Liyanage, Kisaru, Hiruna Samarakoon, Sri Parameswaran, and Hasindu Gamaarachchi. 2023. “Efficient End-to-End Long-Read Sequence Mapping Using Minimap2-Fpga Integrated with Hardware Accelerated Chaining.” Scientific Reports 13(1):20174. doi:10.1038/s41598-023-47354-8.
 
