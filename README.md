@@ -21,7 +21,53 @@ In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q
 ## **Methods proposed:**
 
 ### Data and overall strategy
-The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download an appropriate _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
+The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download (ASM694v2) _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
+
+### Environment setup
+```
+conda create -n salmonella_ont_wgs \
+  -c conda-forge -c bioconda \
+  python=3.10 \
+  flye \
+  minimap2 \
+  samtools \
+  nanoplot \
+  bcftools \
+  htslib \
+  tabix \
+  sra-tools \
+  -y
+
+```
+Activate it:
+```
+conda activate salmonella_ont_wgs
+```
+Versions Check:
+```
+flye --version
+minimap2 --version
+samtools --version
+NanoPlot --version
+bcftools --version
+```
+### Data Acquisition:
+Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565) as fastq.gz:
+```
+wget -O data/raw/SRR32410565.fastq.gz \
+https://sra-pub-run-odp.s3.amazonaws.com/sra/SRR32410565/SRR32410565
+```
+Perform a quick check:
+```
+ls -lh data/raw/SRR32410565.fastq.gz
+zcat data/raw/SRR32410565.fastq.gz | head
+```
+Conversion an SRA run into a FASTQ file using 8 threads to speed up extraction.:
+```
+fasterq-dump data/raw/SRR32410565.fastq.gz \
+  --outdir data/raw \
+  --threads 8
+```
 
 ### Quality control and read filtering
 Initial quality control will be performed using NanoPlot (v1.46.2) to assess read length distribution, and quality scores, confirming that the N50 falls within the expected 5–15 kb range and identifying any obvious issues with the sequencing run. If necessary, reads will be filtered using NanoFilt (v2.8.0) to remove very short or low‑quality reads, which can reduce noise and computational burden without compromising assembly quality (Zhao et al. 2023). For example, a minimum read length of 1,000 bp and a Q<10 will be removed. The first and last 50 bases will be removed to retain clean data (Zhao et al. 2023). Downsampling may be considered to reduce run time and memory usage of 60-70x (Wick, Judd, and Holt 2023). 
