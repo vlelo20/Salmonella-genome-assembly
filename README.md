@@ -18,9 +18,9 @@ Aligning the assembled genome to a reference is essential for variant calling an
 
 In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q20+ reads involves balancing the strengths and limitations of long‑read sequencing. ONT provides long reads that enable complete, structurally accurate assemblies and plasmid resolution, but residual basecalling errors necessitate careful polishing and appropriate variant calling strategies. Meta‑analyses and recent methodological papers support the use of long‑read assemblers like Flye, ONT‑aware polishers like Medaka, and long‑read aligners like minimap2 as a robust foundation for bacterial genome assembly and comparative genomics. This assignment will apply these principles to generate a consensus _S. enterica_ genome, align it to a reference, call variants, and visualize the results.
 
-## **Methods proposed:**
+## **2.0 - Methods proposed:**
 
-### Data and overall strategy
+### 2.1 - Data and overall strategy
 The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download (ASM694v2) _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
 
 ### Environment setup
@@ -51,7 +51,7 @@ samtools --version
 NanoPlot --version
 bcftools --version
 ```
-### Data Acquisition:
+### 2.2 - Data Acquisition:
 Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565) as fastq.gz:
 ```
 wget -O data/raw/SRR32410565.fastq.gz \
@@ -68,23 +68,93 @@ fasterq-dump data/raw/SRR32410565.fastq.gz \
   --outdir data/raw \
   --threads 8
 ```
+Renaming file:
+```
+mv data/raw/SRR32410565.fastq.gz.fastq data/raw/SRR32410565.fastq
+ls -lh data/raw/
+```
+Reference genome retrieval:
+A reference genome for _Salmonella enterica_ will be downloaded from NCBI RefSeq, ideally matching the serovar of the sequenced isolate. The reference will be obtained in FASTA format along with its annotation (GenBank or GFF), enabling both sequence‑level and feature‑level comparisons. Using a well‑annotated RefSeq reference facilitates interpretation of variants in terms of genes, operons, and known virulence or resistance loci.
+Download ASM694v2 reference (NO ncbi-datasets-cli):
+```
+REFDIR="results/ref/ASM694v2"
+mkdir -p "$REFDIR"
+cd "$REFDIR"
 
-### Quality control and read filtering
+BASE="https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2"
+
+# Genome FASTA (reference sequence)
+wget -O ASM694v2_genomic.fna.gz  "${BASE}/GCF_000006945.2_ASM694v2_genomic.fna.gz"
+
+# Annotation (GFF) — useful for gene context in IGV
+wget -O ASM694v2_genomic.gff.gz  "${BASE}/GCF_000006945.2_ASM694v2_genomic.gff.gz"
+
+gunzip -f ASM694v2_genomic.fna.gz
+gunzip -f ASM694v2_genomic.gff.gz
+
+ln -sf ASM694v2_genomic.fna results/ref/reference.fasta 2>/dev/null || true
+```
+
+
+### 2.3 - Quality control and read filtering
 Initial quality control will be performed using NanoPlot (v1.46.2) to assess read length distribution, and quality scores, confirming that the N50 falls within the expected 5–15 kb range and identifying any obvious issues with the sequencing run. If necessary, reads will be filtered using NanoFilt (v2.8.0) to remove very short or low‑quality reads, which can reduce noise and computational burden without compromising assembly quality (Zhao et al. 2023). For example, a minimum read length of 1,000 bp and a Q<10 will be removed. The first and last 50 bases will be removed to retain clean data (Zhao et al. 2023). Downsampling may be considered to reduce run time and memory usage of 60-70x (Wick, Judd, and Holt 2023). 
+
+QC plot for reads (NanoPlot): 
+```
+cd ~/binf6110/assignment1
+
+NanoPlot \
+  --fastq data/raw/SRR32410565.fastq \
+  --outdir data/qc/nanoplot \
+  --threads 8 \
+  --plots hex dot \
+  --loglength
+
+```
 
 ### De novo genome assembly
 De novo assembly will be performed using Flye (v2.9.6), a long‑read assembler that has been extensively benchmarked on ONT bacterial data and shown to produce highly contiguous assemblies. The preset "hq" will be used as we have Q20+ reads. An expected genome size of 5 Mb will be set. Threads will be set to 14 keeping 8 to keep the machine responsive. The number of threads will be adjusted according to available computational resources. Flye constructs a repeat graph from the long reads and resolves repeats using read length and coverage, making it well suited for _S. enterica_ genomes that contain repetitive elements and plasmids. The expected outcome is a small number of contigs, ideally a single chromosomal contig and one or more plasmid contigs.
 
-### Assembly polishing
-To improve the base‑level accuracy of the Flye assembly, ONT‑specific polishing will be performed using Medaka (v2.2.0), which applies neural network models trained on ONT data to correct systematic errors (Zhao et al. 2023). The appropriate Medaka model is "sup" for R10/Q20+ chemistry with Q20+. Polishing will be performed by aligning the original ONT reads back to the Flye assembly using minimap2, followed by Medaka consensus calling to generate a polished assembly.
-
-### Reference genome retrieval
-A reference genome for _Salmonella enterica_ will be downloaded from NCBI RefSeq, ideally matching the serovar of the sequenced isolate. The reference will be obtained in FASTA format along with its annotation (GenBank or GFF), enabling both sequence‑level and feature‑level comparisons. Using a well‑annotated RefSeq reference facilitates interpretation of variants in terms of genes, operons, and known virulence or resistance loci.
 
 ### Alignment and variant calling
-Long‑read alignment will be performed using minimap2 (v2.28), which is widely regarded as the standard aligner for ONT reads due to its speed and accuracy (Liyanage et al. 2023). For read‑to‑assembly and read‑to‑reference alignments, the  preset will be used. The resulting SAM files will be converted to BAM, sorted, and indexed using Samtools (v1.21), which also provides basic statistics and depth information. To compare the polished assembly to the reference genome, the assembly itself may also be aligned to the reference using minimap2 in assembly‑to‑reference mode.
+Long‑read alignment will be performed using minimap2 (v2.30), which is widely regarded as the standard aligner for ONT reads due to its speed and accuracy (Liyanage et al. 2023). For read‑to‑assembly and read‑to‑reference alignments, the  preset will be used. The resulting SAM files will be converted to BAM, sorted, and indexed using Samtools (v1.21), which also provides basic statistics and depth information. To compare the polished assembly to the reference genome, the assembly itself may also be aligned to the reference using minimap2 in assembly‑to‑reference mode.
 
+```
+minimap2 -t 8 -ax map-ont \
+  results/ref/ASM694v2/ASM694v2_genomic.fna \
+  data/raw/SRR32410565.fastq | \
+samtools sort -@ 8 -o results/align/reads_vs_ASM694v2.bam
+samtools index results/align/reads_vs_ASM694v2.bam
+```
+Mapping summary:
+```
+samtools flagstat results/align/reads_vs_ASM694v2.bam > results/align/ASM694v2.flagstat.txt
+samtools idxstats results/align/reads_vs_ASM694v2.bam > results/align/ASM694v2.idxstats.txt
+```
+
+```
+samtools depth -a results/align/reads_vs_ASM694v2.bam > results/plots/depth_ASM694v2.txt
+
+awk 'BEGIN{cov=0;tot=0;sum=0}
+     {tot++; sum+=$3; if($3>0) cov++}
+     END{
+       print "Breadth_covered_fraction", cov/tot;
+       print "Mean_depth", sum/tot;
+     }' results/plots/depth_ASM694v2.txt > results/align/ASM694v2.coverage_metrics.txt
+```
+### Variant calling vs ASM694v2
 Variant calling will be carried out using a long‑read‑aware variant caller using clair3 (v1.0.10) with the ONT R10 model, which has been shown to provide high accuracy for bacterial long‑read variant calling (Hall et al. 2024). These tools take the minimap2‑aligned BAM files as input and produce VCF files containing SNVs and small indels. Variants will be filtered using default quality thresholds. 
+```
+bcftools mpileup -Ou \
+  -f results/ref/ASM694v2/ASM694v2_genomic.fna \
+  results/align/reads_vs_ASM694v2.bam | \
+bcftools call -mv -Oz \
+  -o results/vcf/variants_vs_ASM694v2.vcf.gz
+
+tabix -p vcf results/vcf/variants_vs_ASM694v2.vcf.gz
+```
+### Assembly polishing
+To improve the base‑level accuracy of the Flye assembly, ONT‑specific polishing will be performed using Medaka (v2.2.0), which applies neural network models trained on ONT data to correct systematic errors (Zhao et al. 2023). The appropriate Medaka model is "sup" for R10/Q20+ chemistry with Q20+. Polishing will be performed by aligning the original ONT reads back to the Flye assembly using minimap2, followed by Medaka consensus calling to generate a polished assembly.
 
 ### Visualization and comparative analysis
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
