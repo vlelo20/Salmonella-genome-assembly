@@ -128,6 +128,38 @@ flye --nano-hq data/raw/SRR32410565.fastq \
   --threads 14
 
 ```
+## Assembly Polishing
+
+The raw Flye assembly was polished using Medaka consensus (v2.0.1) in the dedicated medaka_env conda environment to correct residual base-level errors (e.g., homopolymer indels) common in ONT drafts, leveraging the same raw reads for neural-network refinement. Medaka automatically selected the R10.4.1 SUP variant model (r1041_e82_400bps_sup_variant_v5.0.0), realigning reads to the draft contigs with minimap2 (map-ont), generating pileup features, and producing a consensus sequence; 14 threads were used for efficiency. Polishing was executed as follows:
+​
+```
+conda activate medaka_env
+cd ~/binf6110/assignment1
+
+medaka_consensus \
+  -i data/raw/SRR32410565.fastq \
+  -d results/assembly/flye_raw/assembly.fasta \
+  -o results/assembly/flye_medaka_polished \
+  -t 14
+
+```
+## Assembly-to-Reference Alignment
+The polished assembly consensus (flye_medaka_polished/consensus.fasta) was aligned to the ASM694v2 reference using minimap2 in assembly-to-reference mode (-ax asm5), optimized for whole-contig mapping with secondary hit suppression to visualize synteny, structural variants, and contig ordering. The resulting SAM was converted to sorted/indexed BAM via samtools for IGV visualization, flagstat summaries, and downstream comparisons (e.g., dotplots via nucmer/mummerplot). Alignment was performed as follows:
+
+```
+conda activate salmonella_ont_wgs  # minimap2/samtools env
+cd ~/binf6110/assignment1
+
+minimap2 -ax asm5 --secondary=no -t 14 \
+  results/ref/ASM694v2/ASM694v2_genomic.fna \
+  results/assembly/flye_medaka_polished/consensus.fasta | \
+samtools sort -@ 14 -o results/align/polished_flye_vs_ASM694v2.bam -
+
+samtools index results/align/polished_flye_vs_ASM694v2.bam
+samtools flagstat results/align/polished_flye_vs_ASM694v2.bam \
+  > results/align/polished_flye_vs_ASM694v2.flagstat.txt
+
+```
 
 ### Alignment and variant calling
 Long‑read alignment will be performed using minimap2 (v2.30), which is widely regarded as the standard aligner for ONT reads due to its speed and accuracy (Liyanage et al. 2023). For read‑to‑assembly and read‑to‑reference alignments, the  preset will be used. The resulting SAM files will be converted to BAM, sorted, and indexed using Samtools (v1.21), which also provides basic statistics and depth information. To compare the polished assembly to the reference genome, the assembly itself may also be aligned to the reference using minimap2 in assembly‑to‑reference mode.
@@ -161,7 +193,7 @@ Variant calling was performed using Medaka (v2.0.1) in reads‑to‑reference mo
 
 For variant calling, Medaka internally realigned the ONT reads to the ASM694v2 reference using minimap2 with the ONT long‑read preset (-x map-ont, 4 threads), reusing the existing FASTA index (ASM694v2_genomic.fna.fai) and minimap2 index (ASM694v2_genomic.fna.map-ont.mmi) where available. The reference (NC_003197.2 chromosome and NC_003277.2 plasmid) was processed in 1 Mb windows, with an internal inference chunk length of 10,000 bases; regions shorter than this threshold were “quarantined” and processed in a final pass to ensure complete coverage of both chromosomal and plasmid sequence. Reads were filtered using a minimum mapping quality threshold of 1, pileup‑based features were generated for each window (reporting median depths typically between ~130× and ~200× across the chromosome), and these features were passed to a bidirectional GRU neural network (two layers, 128 hidden units per direction) running at full precision on CPU to produce base‑level consensus probabilities. Medaka then combined predictions across overlapping windows, resolved non‑overlapping segments (reported in the log as “cannot be concatenated as there is no overlap and they do not abut”), and wrote the final variant calls and consensus to results/vcf/medaka_reads_only/medaka.annotated.vcf.
 ```
-conda deactivate  # until you see (base)
+conda deactivate
 conda create -n medaka_env -c conda-forge -c bioconda \
   medaka=2.0 python=3.10 -y
 ```
@@ -176,22 +208,38 @@ medaka_variant \
   -o results/vcf/medaka_reads_only \
   -t 4
 ```
-The resulting VCF was then sorted and indexed to enable efficient visualization and downstream analyses. Sorting by genomic coordinate was performed with bcftools, and a tabix index was created for random access:
+
+Post-Processing of Medaka VCF
+
+The Medaka output VCF was sorted by genomic coordinates (CHROM, POS) using bcftools to resolve indexing issues, compressed, and indexed with tabix for efficient random access in IGV and downstream analyses (e.g., region-specific queries).
+
+VCF sorting, compression, and tabix indexing
 ```
-# Sort Medaka VCF by CHROM and POS and compress
+bcftools sort \
+  results/vcf/medaka_reads_only/medaka.annotated.vcf \
+  -Oz -o results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz
+
+tabix -p vcf results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz
+```
+AF annotation and indexing
+```
 bcftools +fill-tags \
   results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
   -Oz -o results/vcf/medaka_reads_only/medaka.af.vcf.gz \
   -- -t AF
-# Create tabix index for the sorted VCF
+
 tabix -p vcf results/vcf/medaka_reads_only/medaka.af.vcf.gz
 ```
+Variant Summary Statistics
+
+Total variants were enumerated by counting non-header lines, while bcftools stats provided a breakdown of SNPs vs. indels, written to medaka.stats.txt for reporting.
+
 Finding Total number of Variants:
 ```
 bcftools view results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
   | grep -v "^#" | wc -l
 ```
- SNPs vs indels:
+SNPs/indels breakdown:
 ```
 bcftools stats results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
   > results/vcf/medaka_reads_only/medaka.stats.txt
@@ -208,6 +256,11 @@ To improve the base‑level accuracy of the Flye assembly, ONT‑specific polish
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
 
 ## Results
+
+## De novo Assembly
+
+Flye assembled the 809 Mb raw ONT reads (N50 4,683 bp, estimated coverage 161x) into a 5.1 Mb draft genome spanning 3 contigs (N50 3.3 Mb, largest contig 3.3 Mb), with mean coverage 160x and no scaffolding required. The process generated 4 initial disjointigs (overlap coverage 116x, median divergence 1.6%), followed by repeat graph simplification (mean edge coverage 127x, 95.3% reads aligned) and a single polishing iteration (alignment error rate 1.8%), yielding assembly.fasta likely comprising the chromosome and two plasmids based on contig metrics summarized in assembly_info.txt.
+
 
 ## Discussion
 biological interpretation.... a gene that has snps..
