@@ -113,8 +113,21 @@ NanoPlot \
 ```
 
 ### De novo genome assembly
-De novo assembly will be performed using Flye (v2.9.6), a long‑read assembler that has been extensively benchmarked on ONT bacterial data and shown to produce highly contiguous assemblies. The preset "hq" will be used as we have Q20+ reads. An expected genome size of 5 Mb will be set. Threads will be set to 14 keeping 8 to keep the machine responsive. The number of threads will be adjusted according to available computational resources. Flye constructs a repeat graph from the long reads and resolves repeats using read length and coverage, making it well suited for _S. enterica_ genomes that contain repetitive elements and plasmids. The expected outcome is a small number of contigs, ideally a single chromosomal contig and one or more plasmid contigs.
 
+NanoPlot (v1.46.2) QC confirmed high-quality ONT reads (N50 4,683 bp, median Q-score 23.7, 196k reads, 809 Mb total yield); no NanoFilt filtering or downsampling was applied as the data exceeded standard assembly thresholds without compromising contiguity or accuracy (Zhao et al. 2023; Wick, Judd, and Holt 2023).
+​
+
+De novo assembly was performed using Flye (v2.9.6) in a dedicated flye_env conda environment, leveraging its repeat graph construction optimized for long-read ONT data to produce highly contiguous bacterial assemblies with accurate resolution of repetitive elements and plasmids. The high-quality (HQ) preset (--nano-hq) was selected for Q20+ reads, with an expected genome size of 5 Mb and 14 CPU threads (reserving system resources for responsiveness); assembly was run on the raw FASTQ as follows:
+
+```
+conda activate salmonella_ont_wgs
+cd ~/binf6110/assignment1
+
+flye --nano-hq data/raw/SRR32410565.fastq \
+  --genome-size 5m --out-dir results/assembly/flye_raw \
+  --threads 14
+
+```
 
 ### Alignment and variant calling
 Long‑read alignment will be performed using minimap2 (v2.30), which is widely regarded as the standard aligner for ONT reads due to its speed and accuracy (Liyanage et al. 2023). For read‑to‑assembly and read‑to‑reference alignments, the  preset will be used. The resulting SAM files will be converted to BAM, sorted, and indexed using Samtools (v1.21), which also provides basic statistics and depth information. To compare the polished assembly to the reference genome, the assembly itself may also be aligned to the reference using minimap2 in assembly‑to‑reference mode.
@@ -166,13 +179,26 @@ medaka_variant \
 The resulting VCF was then sorted and indexed to enable efficient visualization and downstream analyses. Sorting by genomic coordinate was performed with bcftools, and a tabix index was created for random access:
 ```
 # Sort Medaka VCF by CHROM and POS and compress
-bcftools sort \
-  results/vcf/medaka_reads_only/medaka.annotated.vcf \
-  -Oz -o results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz
-
+bcftools +fill-tags \
+  results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
+  -Oz -o results/vcf/medaka_reads_only/medaka.af.vcf.gz \
+  -- -t AF
 # Create tabix index for the sorted VCF
-tabix -p vcf results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz
+tabix -p vcf results/vcf/medaka_reads_only/medaka.af.vcf.gz
 ```
+Finding Total number of Variants:
+```
+bcftools view results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
+  | grep -v "^#" | wc -l
+```
+ SNPs vs indels:
+```
+bcftools stats results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
+  > results/vcf/medaka_reads_only/medaka.stats.txt
+
+grep "^SN" results/vcf/medaka_reads_only/medaka.stats.txt
+```
+
 The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tbi index) was used for variant exploration in IGV, summary statistics with bcftools, and downstream plotting of variant distributions along the S. enterica chromosome and plasmid.
 
 ### Assembly polishing
@@ -180,6 +206,14 @@ To improve the base‑level accuracy of the Flye assembly, ONT‑specific polish
 
 ### Visualization and comparative analysis
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
+
+## Results
+
+## Discussion
+biological interpretation.... a gene that has snps..
+
+## Conclusion
+
 
 
 ## **References:**
