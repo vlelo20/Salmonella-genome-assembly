@@ -23,7 +23,7 @@ In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q
 ## 2.1 - Data and overall strategy
 The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download (ASM694v2) _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
 
-### Environment setup
+### **2.1.1 - Environment setup**
 ```
 conda create -n salmonella_ont_wgs \
   -c conda-forge -c bioconda \
@@ -53,7 +53,7 @@ bcftools --version
 ```
 ## **2.2 - Data Acquisition**
 
-### **Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565)**
+### **2.2.1 - Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565)**
 ```
 wget -O data/raw/SRR32410565.fastq.gz \
 https://sra-pub-run-odp.s3.amazonaws.com/sra/SRR32410565/SRR32410565
@@ -74,7 +74,7 @@ Renaming file:
 mv data/raw/SRR32410565.fastq.gz.fastq data/raw/SRR32410565.fastq
 ls -lh data/raw/
 ```
-### **Reference genome retrieval**
+### **2.2.2 - Reference genome retrieval**
 A reference genome for _Salmonella enterica_ will be downloaded from NCBI RefSeq, ideally matching the serovar of the sequenced isolate. The reference will be obtained in FASTA format along with its annotation (GenBank or GFF), enabling both sequence‑level and feature‑level comparisons. Using a well‑annotated RefSeq reference facilitates interpretation of variants in terms of genes, operons, and known virulence or resistance loci.
 Download ASM694v2 reference (NO ncbi-datasets-cli):
 ```
@@ -99,8 +99,6 @@ ln -sf ASM694v2_genomic.fna results/ref/reference.fasta 2>/dev/null || true
 
 ## **2.3 - Quality control and read filtering**
 Initial quality control will be performed using NanoPlot (v1.46.2) to assess read length distribution, and quality scores, confirming that the N50 falls within the expected 5–15 kb range and identifying any obvious issues with the sequencing run. If necessary, reads will be filtered using NanoFilt (v2.8.0) to remove very short or low‑quality reads, which can reduce noise and computational burden without compromising assembly quality (Zhao et al. 2023). For example, a minimum read length of 1,000 bp and a Q<10 will be removed. The first and last 50 bases will be removed to retain clean data (Zhao et al. 2023). Downsampling may be considered to reduce run time and memory usage of 60-70x (Wick, Judd, and Holt 2023). 
-
-### QC plot for reads (NanoPlot): 
 ```
 cd ~/binf6110/assignment1
 
@@ -137,7 +135,7 @@ flye --nano-hq data/raw/SRR32410565.fastq \
   --threads 14
 
 ```
-## **2.6 - Assembly Polishing**
+## **2.5 - Assembly Polishing**
 The raw Flye assembly was polished using Medaka consensus (v2.0.1) in the dedicated medaka_env conda environment to correct residual base-level errors (e.g., homopolymer indels) common in ONT drafts, leveraging the same raw reads for neural-network refinement (Zhao et al. 2023). Medaka automatically selected the R10.4.1 SUP variant model (r1041_e82_400bps_sup_variant_v5.0.0), realigning reads to the draft contigs with minimap2 (map-ont preset), generating pileup features, and producing a consensus sequence; 14 threads were used for efficiency. This involved aligning the original ONT reads back to the Flye assembly using minimap2, followed by Medaka consensus calling to generate the polished assembly​
 ```
 conda activate medaka_env
@@ -150,7 +148,7 @@ medaka_consensus \
   -t 14
 
 ```
-## **2.7 - Assembly-to-Reference Alignment**
+## **2.6 - Assembly-to-Reference Alignment**
 
 The polished Medaka consensus assembly was aligned to the ASM694v2 reference genome using minimap2 with the asm5 preset, which is optimized for aligning assembled contigs and allows large insertions/deletions to detect structural variants and chromosomal rearrangements. The --secondary=no flag suppressed secondary alignments to retain only the best reference match per contig, simplifying synteny visualization and preventing ambiguous mappings. The SAM output was coordinate-sorted and compressed into BAM format using samtools sort (14 threads), then indexed for genome browser viewing (IGV). Additionally, samtools flagstat generated alignment statistics (mapped contigs, alignment rates, supplementary alignments) to quantify assembly-to-reference concordance and identify misassemblies or unplaced sequences.
 
@@ -170,7 +168,7 @@ samtools flagstat results/align/polished_flye_vs_ASM694v2.bam \
 ```
 
 
-### **2.8 - Raw reads - Reference Alignment and variant calling**
+### **2.7 - Raw reads - Reference Alignment and variant calling**
 
 Raw Oxford Nanopore reads (SRR32410565.fastq) were aligned to the ASM694v2 reference genome using minimap2 (v2.30) with the map-ont preset optimized for single-molecule long-read alignment, which accommodates the characteristic error profile of ONT sequencing and applies soft-clipping to read ends. The resulting SAM output was coordinate-sorted and compressed into BAM format using samtools sort (v1.23) parallelized across 8 threads, then indexed with samtools index to enable efficient random access for downstream visualization and quality assessment.
 
@@ -181,14 +179,14 @@ minimap2 -t 8 -ax map-ont \
 samtools sort -@ 8 -o results/align/reads_vs_ASM694v2.bam
 samtools index results/align/reads_vs_ASM694v2.bam
 ```
-### **Mapping Summary Statistics**
+### **2.7.1 - Mapping Summary Statistics**
 
 Alignment quality metrics were extracted from the reads-to-reference BAM file using samtools flagstat (v1.23) to quantify overall mapping rates, properly paired reads, unmapped reads, and supplementary alignments. Additionally, samtools idxstats provided per-contig read counts and mapped read lengths, enabling assessment of coverage distribution across the chromosome and plasmid sequences and identification of potential unmapped or underrepresented genomic regions.
 ```
 samtools flagstat results/align/reads_vs_ASM694v2.bam > results/align/ASM694v2.flagstat.txt
 samtools idxstats results/align/reads_vs_ASM694v2.bam > results/align/ASM694v2.idxstats.txt
 ```
-### **Coverage Depth Analysis**
+### **2.7.2 - Coverage Depth Analysis**
 Per-base sequencing depth was calculated using samtools depth (v1.23) with the -a flag to include zero-coverage positions, generating a genome-wide depth profile across all reference sequences. An awk script processed this depth file to compute two key coverage metrics: breadth of coverage (fraction of reference bases with non-zero depth) and mean sequencing depth (total aligned bases divided by genome length). These summary statistics were written to a separate file to assess the adequacy and uniformity of raw sequencing data prior to de novo assembly, ensuring sufficient read support for high-quality genome reconstruction.
 ```
 samtools depth -a results/align/reads_vs_ASM694v2.bam > results/plots/depth_ASM694v2.txt
@@ -200,7 +198,7 @@ awk 'BEGIN{cov=0;tot=0;sum=0}
        print "Mean_depth", sum/tot;
      }' results/plots/depth_ASM694v2.txt > results/align/ASM694v2.coverage_metrics.txt
 ```
-### **2.9 - Variant calling on ONT reads against the ASM694v2 reference genome**
+### **2.8 - Variant calling on ONT reads against the ASM694v2 reference genome**
 
 Variant calling was performed using Medaka (v2.0.1) in reads‑to‑reference mode on the raw ONT FASTQ file (SRR32410565.fastq) and the ASM694v2 reference genome (Hall et al. 2024). Within a dedicated medaka_env conda environment, Medaka was run with 4 CPU threads and default model auto‑selection; because the basecaller string could not be parsed from the input, Medaka fell back to its default R10.4.1 SUP model r1041_e82_400bps_sup_variant_v5.0.0, which is appropriate for 400 bp Q20+ R10.4.1 data. Before inference, Medaka confirmed that bundled versions of minimap2 (v2.30), samtools (v1.23), bcftools (v1.23), bgzip, and tabix met or exceeded its minimum requirements, ensuring consistency of downstream pileup and VCF operations.
 
@@ -222,7 +220,7 @@ medaka_variant \
   -t 4
 ```
 
-### **Post-Processing of Medaka VCF**
+### **2.8.1 - Post-Processing of Medaka VCF**
 
 The Medaka output VCF was sorted by genomic coordinates (CHROM, POS) using bcftools to resolve indexing issues, compressed, and indexed with tabix for efficient random access in IGV and downstream analyses (e.g., region-specific queries).
 
@@ -243,7 +241,7 @@ bcftools +fill-tags \
 
 tabix -p vcf results/vcf/medaka_reads_only/medaka.af.vcf.gz
 ```
-### **Variant Summary Statistics**
+### **2.8.2 - Variant Summary Statistics**
 
 Total variants were enumerated by counting non-header lines, while bcftools stats provided a breakdown of SNPs vs. indels, written to medaka.stats.txt for reporting.
 
@@ -258,7 +256,7 @@ bcftools stats results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
 
 grep "^SN" results/vcf/medaka_reads_only/medaka.stats.txt
 ```
-Variant distribution by contig:
+### **2.8.3 - Variant distribution by contig**
 
 The genomic distribution of variants across reference contigs (chromosome and plasmids) was determined by extracting the CHROM field from the Medaka-annotated VCF using bcftools query (v1.23), followed by sorting, unique counting with uniq -c, and numeric reverse sorting to rank contigs by variant frequency. Results were saved to a tab-delimited file, and percentages relative to the total variant count (14,089) were computed using awk with sprintf formatting for 0.1% precision, producing a summary table for assessment of chromosomal versus plasmid divergence.
 ```
@@ -278,8 +276,7 @@ awk '{print $2 "\t" $1 "\t" sprintf("%.1f%%", $1/14089*100)}' \
 The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tbi index) was used for variant exploration in IGV, summary statistics with bcftools, and downstream plotting of variant distributions along the S. enterica chromosome and plasmid.
 
 
-
-### Visualization and comparative analysis
+### **2.9 - Visualization and comparative analysis**
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
 
 # 3.0 - Results
@@ -304,8 +301,6 @@ Figure 1: IGV genome-wide view
 Figure 2: High-quality alignment region
 
 Figure 3: Variant region (if interesting variants found)
-
-Figure 4 (optional): Assembly graph
 
 
 ## 4.0 - Discussion
