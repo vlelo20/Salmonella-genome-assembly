@@ -2,7 +2,7 @@
 Author: Vian Lelo
 Date created: January 20th, 2026, Updated: February 8th, 2026
 
-# ** 1.0 - Introduction**
+# 1.0 - Introduction
 
 Whole‑genome assembly of bacterial pathogens has become a central tool in microbiology, epidemiology, and public health. _Salmonella enterica_ is a prokaryotic, Gram‑negative bacterial pathogen responsible for a substantial burden of foodborne disease worldwide, with infections ranging from self‑limiting gastroenteritis to invasive systemic disease. Its genome typically consists of a single circular chromosome of ~4.5–5.0 Mb, often accompanied by one or more plasmids that can carry virulence and antimicrobial resistance determinants (Baker and Dougan 2007). High‑quality, complete genome assemblies for _S. enterica_ enable precise serovar determination, outbreak reconstruction, plasmid tracking, and comparative genomics, all of which depend on accurate reconstruction of both chromosomal and extrachromosomal replicons (Zhao et al. 2023; Wick, Judd, and Holt 2023). 
 
@@ -18,7 +18,7 @@ Aligning the assembled genome to a reference is essential for variant calling an
 
 In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q20+ reads involves balancing the strengths and limitations of long‑read sequencing. ONT provides long reads that enable complete, structurally accurate assemblies and plasmid resolution, but residual basecalling errors necessitate careful polishing and appropriate variant calling strategies. Meta‑analyses and recent methodological papers support the use of long‑read assemblers like Flye, ONT‑aware polishers like Medaka, and long‑read aligners like minimap2 as a robust foundation for bacterial genome assembly and comparative genomics. This assignment will apply these principles to generate a consensus _S. enterica_ genome, align it to a reference, call variants, and visualize the results.
 
-# **2.0 - Methods proposed:**
+# **2.0 - Methods**
 
 ## 2.1 - Data and overall strategy
 The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download (ASM694v2) _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
@@ -51,7 +51,7 @@ samtools --version
 NanoPlot --version
 bcftools --version
 ```
-## **2.2 - Data Acquisition:**
+## **2.2 - Data Acquisition**
 
 ### **Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565)**
 ```
@@ -111,6 +111,16 @@ NanoPlot \
   --plots hex dot \
   --loglength
 
+```
+Raw reads aligned to ASM694v2 showed 94.3% mapping (193,601/205,302 reads) and mean depth 150× across 96.8% breadth, quantified via samtools flagstat, depth -a, and awk-derived metrics. The polished assembly exhibited 96% contig mapping (24/25 alignments), confirming high structural fidelity.
+```
+# Coverage (prior)
+samtools depth -a reads_vs_ASM694v2.bam > plots/depth_ASM694v2.txt
+awk ... > ASM694v2.coverage_metrics.txt  # 96.8% breadth, 150x
+
+# Flagstats
+samtools flagstat reads_vs_ASM694v2.bam     # 94.3% mapped
+samtools flagstat polished_flye_vs_ASM694v2.bam  # 96% mapped
 ```
 
 ## **2.4 - De novo genome assembly**
@@ -237,7 +247,6 @@ tabix -p vcf results/vcf/medaka_reads_only/medaka.af.vcf.gz
 
 Total variants were enumerated by counting non-header lines, while bcftools stats provided a breakdown of SNPs vs. indels, written to medaka.stats.txt for reporting.
 
-Finding Total number of Variants:
 ```
 bcftools view results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
   | grep -v "^#" | wc -l
@@ -249,6 +258,22 @@ bcftools stats results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
 
 grep "^SN" results/vcf/medaka_reads_only/medaka.stats.txt
 ```
+Variant distribution by contig:
+
+The genomic distribution of variants across reference contigs (chromosome and plasmids) was determined by extracting the CHROM field from the Medaka-annotated VCF using bcftools query (v1.23), followed by sorting, unique counting with uniq -c, and numeric reverse sorting to rank contigs by variant frequency. Results were saved to a tab-delimited file, and percentages relative to the total variant count (14,089) were computed using awk with sprintf formatting for 0.1% precision, producing a summary table for assessment of chromosomal versus plasmid divergence.
+```
+cd ~/binf6110/assignment1
+
+bcftools query -f '%CHROM\n' \
+  results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz | \
+sort | uniq -c | sort -nr > results/vcf/variants_per_contig.txt
+
+cat results/vcf/variants_per_contig.txt
+
+# With percentages (total=14089)
+awk '{print $2 "\t" $1 "\t" sprintf("%.1f%%", $1/14089*100)}' \
+  results/vcf/variants_per_contig.txt | column -t
+```
 
 The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tbi index) was used for variant exploration in IGV, summary statistics with bcftools, and downstream plotting of variant distributions along the S. enterica chromosome and plasmid.
 
@@ -257,11 +282,30 @@ The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tb
 ### Visualization and comparative analysis
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
 
-## 3.0 - Results
+# 3.0 - Results
 
-## De novo Assembly
+## 3.1 - Raw Sequencing Quality
+NanoPlot (v1.46.2) QC of SRR32410565.fastq (196,031 reads) yielded median length 3,957 bp (N50 4,683 bp, mean 4,128 bp) and median Q-score 23.7 (mean 18.9), with 76.9% reads ≥Q20 (625 Mb usable yield from 809 Mb total). These metrics confirm high-quality R10.4.1 SUP data suitable for de novo assembly and reference mapping.
 
-Flye assembled the 809 Mb raw ONT reads (N50 4,683 bp, estimated coverage 161x) into a 5.1 Mb draft genome spanning 3 contigs (N50 3.3 Mb, largest contig 3.3 Mb), with mean coverage 160x and no scaffolding required. The process generated 4 initial disjointigs (overlap coverage 116x, median divergence 1.6%), followed by repeat graph simplification (mean edge coverage 127x, 95.3% reads aligned) and a single polishing iteration (alignment error rate 1.8%), yielding assembly.fasta likely comprising the chromosome and two plasmids based on contig metrics summarized in assembly_info.txt.
+## 3.2 -  De novo Assembly Metrics:
+Flye generated a 5.1 Mb assembly in 3 contigs (N50: 3.3 Mb, largest: 3.3 Mb) from 809 Mb reads (N50: 4,683 bp, ~161x coverage), likely resolving the chromosome and plasmids. NanoPlot QC confirmed median Q23.7 with no filtering needed. Polished consensus (Medaka r1041_e82_400bps_sup_v500) aligned near-perfectly to ASM694v2 (~99% identity via flagstat)
+
+## 3.3 Alignment Quality
+Raw ONT reads mapped efficiently to ASM694v2 (94.3% overall, 94.0% primary; n=193,601/205,302), achieving mean depth 149.96× across 96.8% genomic breadth. The polished assembly showed near-perfect contig mapping (96.0% total, 66.7% primary; n=24/25 alignments), with supplementary hits likely representing circular plasmids.
+
+## 3.4 - Variant Calling Analysis:
+Medaka variant calling (v2.0.1) on the polished assembly relative to ASM694v2 (NC_003197.2) detected 14,089 high-confidence variants (bcftools stats v1.23), predominantly single nucleotide polymorphisms (SNPs: 8,519) and multi-nucleotide polymorphisms (MNPs: 4,396), with 840 indels and 334 complex/other variants; no multiallelic sites were present. Transitions (4,296) slightly outnumbered transversions (4,223; ts/tv ratio 1.02), consistent with biological substitution patterns, while all variants were singletons (AC=1) supported by median QUAL ~55 (range 0–2,174.7) supported by read depths at variant sites ranging 1–381× (18.9% at 10×, 7.3% at 46×). Indel length distribution showed small events dominant (-60 to +60 bp, mostly ±1–2 bp), visualized in IGV (Figure 3) alongside assembly and read tracks confirming structural integrity.
+
+### Variant Distribution by Contig
+Variants were nearly equally distributed between the chromosome (NC_003197.2: 7,163, 50.8%) and plasmid (NC_003277.2: 6,926, 49.2%), reflecting substantial divergence on both replicons relative to the reference despite high overall alignment identity. This distribution highlights conserved core genome variation alongside higher plasticity in accessory elements.
+
+Figure 1: IGV genome-wide view
+
+Figure 2: High-quality alignment region
+
+Figure 3: Variant region (if interesting variants found)
+
+Figure 4 (optional): Assembly graph
 
 
 ## 4.0 - Discussion
@@ -282,7 +326,6 @@ Oxford Nanopore Assembly using Flye. 2025. Retrieved January 18, 2026. https://r
 Hall, Michael B., Ryan R. Wick, Louise M. Judd, An N. Nguyen, Eike J. Steinig, Ouli Xie, Mark Davies, Torsten Seemann, Timothy P. Stinear, and Lachlan Coin. 2024. “Benchmarking Reveals Superiority of Deep Learning Variant Callers on Bacterial Nanopore Sequence Data.” eLife 13:RP98300. doi:10.7554/eLife.98300.
 
 Helm, R. Allen, Alison G. Lee, Harry D. Christman, and Stanley Maloy. 2003. “Genomic Rearrangements at Rrn Operons in Salmonella.” Genetics 165(3):951–59. doi:10.1093/genetics/165.3.951.
-
 
 Liyanage, Kisaru, Hiruna Samarakoon, Sri Parameswaran, and Hasindu Gamaarachchi. 2023. “Efficient End-to-End Long-Read Sequence Mapping Using Minimap2-Fpga Integrated with Hardware Accelerated Chaining.” Scientific Reports 13(1):20174. doi:10.1038/s41598-023-47354-8.
 
