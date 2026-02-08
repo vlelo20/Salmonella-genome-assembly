@@ -1,6 +1,6 @@
 # **Genome Assembly and Reference Comparison of *Salmonella enterica***
 Author: Vian Lelo
-Date created: January 20th, 2026
+Date created: January 20th, 2026, Updated: February 8th, 2026
 
 ## **Introduction**
 
@@ -144,7 +144,8 @@ medaka_consensus \
 
 ```
 ## Assembly-to-Reference Alignment
-The polished assembly consensus (flye_medaka_polished/consensus.fasta) was aligned to the ASM694v2 reference using minimap2 in assembly-to-reference mode (-ax asm5), optimized for whole-contig mapping with secondary hit suppression to visualize synteny, structural variants, and contig ordering. The resulting SAM was converted to sorted/indexed BAM via samtools for IGV visualization, flagstat summaries, and downstream comparisons (e.g., dotplots via nucmer/mummerplot). Alignment was performed as follows:
+
+The polished Medaka consensus assembly was aligned to the ASM694v2 reference genome using minimap2 with the asm5 preset, which is optimized for aligning assembled contigs and allows large insertions/deletions to detect structural variants and chromosomal rearrangements. The --secondary=no flag suppressed secondary alignments to retain only the best reference match per contig, simplifying synteny visualization and preventing ambiguous mappings. The SAM output was coordinate-sorted and compressed into BAM format using samtools sort (14 threads), then indexed for genome browser viewing (IGV). Additionally, samtools flagstat generated alignment statistics (mapped contigs, alignment rates, supplementary alignments) to quantify assembly-to-reference concordance and identify misassemblies or unplaced sequences.
 
 ```
 conda activate salmonella_ont_wgs  # minimap2/samtools env
@@ -161,8 +162,10 @@ samtools flagstat results/align/polished_flye_vs_ASM694v2.bam \
 
 ```
 
-### Alignment and variant calling
-Long‑read alignment will be performed using minimap2 (v2.30), which is widely regarded as the standard aligner for ONT reads due to its speed and accuracy (Liyanage et al. 2023). For read‑to‑assembly and read‑to‑reference alignments, the  preset will be used. The resulting SAM files will be converted to BAM, sorted, and indexed using Samtools (v1.21), which also provides basic statistics and depth information. To compare the polished assembly to the reference genome, the assembly itself may also be aligned to the reference using minimap2 in assembly‑to‑reference mode.
+
+### Raw reads - Reference Alignment and variant calling
+
+Raw Oxford Nanopore reads (SRR32410565.fastq) were aligned to the ASM694v2 reference genome using minimap2 (v2.30) with the map-ont preset optimized for single-molecule long-read alignment, which accommodates the characteristic error profile of ONT sequencing and applies soft-clipping to read ends. The resulting SAM output was coordinate-sorted and compressed into BAM format using samtools sort (v1.23) parallelized across 8 threads, then indexed with samtools index to enable efficient random access for downstream visualization and quality assessment.
 
 ```
 minimap2 -t 8 -ax map-ont \
@@ -171,11 +174,16 @@ minimap2 -t 8 -ax map-ont \
 samtools sort -@ 8 -o results/align/reads_vs_ASM694v2.bam
 samtools index results/align/reads_vs_ASM694v2.bam
 ```
-Mapping summary:
+Mapping Summary Statistics:
+
+Alignment quality metrics were extracted from the reads-to-reference BAM file using samtools flagstat (v1.23) to quantify overall mapping rates, properly paired reads, unmapped reads, and supplementary alignments. Additionally, samtools idxstats provided per-contig read counts and mapped read lengths, enabling assessment of coverage distribution across the chromosome and plasmid sequences and identification of potential unmapped or underrepresented genomic regions.
 ```
 samtools flagstat results/align/reads_vs_ASM694v2.bam > results/align/ASM694v2.flagstat.txt
 samtools idxstats results/align/reads_vs_ASM694v2.bam > results/align/ASM694v2.idxstats.txt
 ```
+Coverage Depth Analysis
+Per-base sequencing depth was calculated using samtools depth (v1.23) with the -a flag to include zero-coverage positions, generating a genome-wide depth profile across all reference sequences. An awk script processed this depth file to compute two key coverage metrics: breadth of coverage (fraction of reference bases with non-zero depth) and mean sequencing depth (total aligned bases divided by genome length). These summary statistics were written to a separate file to assess the adequacy and uniformity of raw sequencing data prior to de novo assembly, ensuring sufficient read support for high-quality genome reconstruction.
+
 
 ```
 samtools depth -a results/align/reads_vs_ASM694v2.bam > results/plots/depth_ASM694v2.txt
