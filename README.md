@@ -285,7 +285,7 @@ Visualization of read alignments and variants will be performed using the Integr
 NanoPlot (v1.46.2) QC of SRR32410565.fastq (196,031 reads) yielded median length 3,957 bp (N50 4,683 bp, mean 4,128 bp) and median Q-score 23.7 (mean 18.9), with 76.9% reads ≥Q20 (625 Mb usable yield from 809 Mb total). These metrics confirm high-quality R10.4.1 SUP data suitable for de novo assembly and reference mapping.
 
 ## 3.2 -  De novo Assembly Metrics:
-Flye generated a 5.1 Mb assembly in 3 contigs (N50: 3.3 Mb, largest: 3.3 Mb) from 809 Mb reads (N50: 4,683 bp, ~161x coverage), likely resolving the chromosome and plasmids. NanoPlot QC confirmed median Q23.7 with no filtering needed. Polished consensus (Medaka r1041_e82_400bps_sup_v500) aligned near-perfectly to ASM694v2 (~99% identity via flagstat)
+Flye (v2.9.6-b1802) de novo assembly of SRR32410565.fastq (809 Mb yield, read N50 4,683 bp, median Q23.7 per NanoPlot v1.46.2) generated a 5.1 Mb draft in three contigs (N50 ~1.68–3.3 Mb), resolving the chromosome (contig_3: 3.32 Mb, 153× cov.), accessory sequence (contig_2: 1.68 Mb, 169×), and circular plasmid (contig_4: 109 kb, 245×; ~161× overall). No read filtering was required given high quality (76.9% Q20+). Medaka polishing (r1041_e82_400bps_sup_v500) produced a refined consensus aligning near-perfectly to ASM694v2 (96–99% identity via flagstat, minimal misassemblies).
 
 ## 3.3 Alignment Quality
 Raw ONT reads mapped efficiently to ASM694v2 (94.3% overall, 94.0% primary; n=193,601/205,302), achieving mean depth 149.96× across 96.8% genomic breadth. The polished assembly showed near-perfect contig mapping (96.0% total, 66.7% primary; n=24/25 alignments), with supplementary hits likely representing circular plasmids.
