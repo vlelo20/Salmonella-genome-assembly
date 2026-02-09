@@ -22,9 +22,6 @@ In summary, assembling and comparing a Salmonella enterica genome from ONT R10/Q
 
 ## 2.1 - Data and overall strategy
 The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download (ASM694v2) _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
-=======
-### Data and overall strategy
-The starting data will consist of raw Oxford Nanopore FASTQ files generated with R10 chemistry and Q20+ basecalling, with an expected read length N50 of 5–15 kb. The target organism is _Salmonella enterica_, a prokaryotic bacterial pathogen with an expected genome size of approximately 4.5–5.0 Mb, potentially including plasmids. The overall strategy is to perform quality control and filtering of the ONT reads, assemble the genome de novo using a long‑read assembler optimized for ONT data, polish the assembly to improve consensus accuracy, download (ASM694v2) _S. enterica_ reference genome from NCBI, align the assembly and/or reads to the reference, perform variant calling, and visualize both the assembly and the variants. A general estimation of the time required is 4-5 hours to run the protocol (Zhao et al. 2023).
 
 ### Environment setup
 ```
