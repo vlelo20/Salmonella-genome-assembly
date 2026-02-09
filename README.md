@@ -310,7 +310,7 @@ awk '{print $2 "\t" $1 "\t" sprintf("%.1f%%", $1/14089*100)}' \
 
 The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tbi index) was used for variant exploration in IGV, summary statistics with bcftools, and downstream plotting of variant distributions along the S. enterica chromosome and plasmid.
 
-## 2.9 - Functional Annotation of Variants with SnpEff & visulaization
+## 2.9 - Functional Annotation of Variants with SnpEff & visualization
 
 To classify variants by predicted functional impact (missense, synonymous, frameshift, stop-gain/loss), SnpEff (v5.1d) was used to annotate the Medaka-called variants relative to the ASM694v2 reference genome annotation. A custom SnpEff database was constructed from the NCBI GenBank annotation file (GCF_000006945.2_ASM694v2_genomic.gbff) rather than the GFF format, as GenBank provides more reliable gene structure information for bacterial genomes.
 
