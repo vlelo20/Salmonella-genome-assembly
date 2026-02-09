@@ -51,6 +51,18 @@ samtools --version
 NanoPlot --version
 bcftools --version
 ```
+For visualization:
+
+```
+cd ~/binf6110
+mkdir -p assignment1/bin  # For symlink
+conda create -n circos_env -c bioconda -c conda-forge circos=0.69* r-base r-ggplot2 r-rcpproll -y
+conda activate circos_env
+circos -h  # Works (uses compatible Perl 5.32ish)
+
+ln -sf ~/miniconda3/envs/circos_env/bin/circos assignment1/bin/circos
+
+```
 ## **2.2 - Data Acquisition**
 
 ### **2.2.1 - Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565)**
@@ -279,6 +291,7 @@ The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tb
 ### **2.9 - Visualization and comparative analysis**
 Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
 
+
 # 3.0 - Results
 
 ## 3.1 - Raw Sequencing Quality
@@ -296,7 +309,17 @@ Medaka variant calling (v2.0.1) on the polished assembly relative to ASM694v2 (N
 ### Variant Distribution by Contig
 Variants were nearly equally distributed between the chromosome (NC_003197.2: 7,163, 50.8%) and plasmid (NC_003277.2: 6,926, 49.2%), reflecting substantial divergence on both replicons relative to the reference despite high overall alignment identity. This distribution highlights conserved core genome variation alongside higher plasticity in accessory elements.
 
-Figure 1: IGV genome-wide view
+
+
+<img width="1639" height="870" alt="igv_snapshot" src="https://github.com/user-attachments/assets/c332304e-d1e4-45ea-8268-0c341cd05802" />
+
+Figure 1:  IGV alignment view of variant-dense region on plasmid NC_003277.2 (positions 49,744-49,838).This 95 bp window displays individual read alignments from raw Nanopore sequencing data mapped to the ASM694v2 reference genome. The top coverage histogram shows variant allele frequencies at each position, with colored bars representing substitutions relative to the reference sequence (A=green, T=red, G=orange, C=blue). Individual read alignments below reveal extensive heterogeneity, with numerous single nucleotide polymorphisms (colored letters) distributed throughout the reads. Insertions are marked with purple "I" indicators, and deletions appear as black dashes within reads. The reference sequence is displayed at the bottom for comparison. This region exemplifies the high variant density observed across much of the plasmid, with nearly every position showing alternative alleles in at least some reads.
+
+
+<img width="3600" height="2100" alt="plasmid_variants_coverage" src="https://github.com/user-attachments/assets/594f8382-0fb7-41b5-a904-0653aba38193" />
+
+Figure 2: Variant density across plasmid NC_003277.2 in 100 bp windows. The upper panel displays a lollipop plot of variant distribution, where each vertical line represents the number of variants detected per 100 bp bin. SNPs (black) dominate the variant signal and form dense clusters across much of the plasmid sequence, particularly in regions between 50-90 kb. Peak variant density reaches up to 38 variants per bin in the most polymorphic regions. The lower panel shows sequencing coverage as a heatmap, with color intensity (white to dark green) indicating read depth. Coverage is highly uneven across the plasmid, with several low-coverage or zero-coverage regions (white/light green) visible primarily in the 0-50 kb region, suggesting potential alignment difficulties or structural variation in these areas. High-coverage regions (dark green, >300x) correlate with areas of high variant density, indicating reliable variant calling in these regions.
+
 
 Figure 2: High-quality alignment region
 
