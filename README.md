@@ -69,6 +69,23 @@ samtools --version
 NanoPlot --version
 bcftools --version
 ```
+### **2.1.2 - Software Versions**
+
+All analyses were performed using the following tool versions, verified via `--version` flags:
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Flye | 2.9.6-b1802 | De novo genome assembly |
+| minimap2 | 2.30-r1287 | Read and contig alignment |
+| samtools | 1.23 | BAM file manipulation and statistics |
+| NanoPlot | 1.46.2 | Sequencing quality control |
+| bcftools | 1.23 | VCF manipulation and variant statistics |
+| Medaka | 2.0.1 | Assembly polishing and variant calling |
+| Python | 3.10 | Script execution environment |
+| R | 4.x.x | Data visualization and analysis |
+
+Version consistency across the analysis pipeline was maintained via conda environment specification.
+
 ## **2.2 - Data Acquisition**
 
 ### **2.2.1 - Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565)**
