@@ -419,7 +419,7 @@ These results demonstrate that even with high overall genome conservation, Salmo
 
 The workflow developed here—combining long-read sequencing, de novo assembly, variant calling, and gene-level annotation—provides a robust framework for bacterial comparative genomics. Future applications of this approach to additional Salmonella isolates would enable population-level analyses of genomic diversity, identification of outbreak-associated variants, and tracking of resistance determinant dissemination. While technical artifacts (particularly the pncB anomaly) highlight the need for validation of extreme outliers, the overall variant patterns reveal biologically meaningful divergence concentrated in adaptive genes.
 
-## **6.0 - References:**
+# **6.0 - References:**
 
 References
 Baker, S., & Dougan, G. (2007). The genome of Salmonella enterica serovar Typhi. Clinical Infectious Diseases, 45(Suppl. 1), S29–S33. https://doi.org/10.1086/518143
