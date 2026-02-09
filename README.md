@@ -411,8 +411,8 @@ Future work should include: (1) validation of variants in key virulence genes by
 
 4.7 - Biological Significance
 Despite these limitations, the results reveal substantial genomic divergence concentrated in functionally important genes. The clustering of variants in immune evasion genes (sspH2, oafA) suggests adaptive evolution in response to host immunity, while the divergent plasmid conjugation machinery indicates potential differences in horizontal gene transfer capability. These findings underscore the genomic diversity within Salmonella enterica and highlight the importance of strain-level genomic characterization for understanding pathogen evolution, outbreak investigation, and vaccine development.
-## 5.0 - Conclusion
 
+# 5.0 - Conclusion
 This study successfully assembled and characterized a Salmonella enterica genome using Oxford Nanopore long-read sequencing, achieving high-quality results with minimal preprocessing. The Flye assembler generated a contiguous assembly that aligned well to the ASM694v2 reference genome, demonstrating the capability of ONT R10/Q20+ chemistry for complete bacterial genome reconstruction. Variant calling identified 14,089 polymorphisms, revealing substantial genomic divergence between this isolate and the reference strain.
 The key findings were: (1) variants are concentrated in specific functional categories, particularly virulence factors and plasmid conjugation machinery; (2) chromosomal variant hotspots suggest the presence of genomic islands or mobile elements; (3) the plasmid exhibits bimodal coverage and variant patterns consistent with modular architecture; and (4) genes involved in immune evasion (sspH2, oafA) show high variant densities, suggesting adaptive evolution in host-pathogen interactions.
 These results demonstrate that even with high overall genome conservation, Salmonella strains can differ substantially in clinically relevant genes affecting pathogenicity and horizontal gene transfer. The divergent plasmid conjugation machinery and virulence factors have important implications for public health surveillance, as sequence variation in these regions could affect diagnostic assays, virulence phenotypes, and the spread of antibiotic resistance.
@@ -423,19 +423,35 @@ The workflow developed here—combining long-read sequencing, de novo assembly, 
 
 References
 Baker, S., & Dougan, G. (2007). The genome of Salmonella enterica serovar Typhi. Clinical Infectious Diseases, 45(Suppl. 1), S29–S33. https://doi.org/10.1086/518143
+
 Chen, Z., Erickson, D. L., & Meng, J. (2020). Benchmarking long-read assemblers for genomic analyses of bacterial pathogens using Oxford Nanopore sequencing. International Journal of Molecular Sciences, 21(23), 9161. https://doi.org/10.3390/ijms21239161
+
 Haesebrouck, F., Pasmans, F., Chiers, K., Maes, D., Ducatelle, R., & Decostere, A. (2017). Efficacy of vaccines against bacterial diseases in swine: What can we expect? Veterinary Microbiology, 100(3-4), 255–268.
+
 Hall, M. B., Wick, R. R., Judd, L. M., Nguyen, A. N., Steinig, E. J., Xie, O., Davies, M., Seemann, T., Stinear, T. P., & Coin, L. (2024). Benchmarking reveals superiority of deep learning variant callers on bacterial nanopore sequence data. eLife, 13, RP98300. https://doi.org/10.7554/eLife.98300
+
 Helm, R. A., Lee, A. G., Christman, H. D., & Maloy, S. (2003). Genomic rearrangements at rrn operons in Salmonella. Genetics, 165(3), 951–959. https://doi.org/10.1093/genetics/165.3.951
+
 Kim, M. L., & Slauch, J. M. (1999). Effect of acetylation (O-factor 5) on the polyclonal antibody response to Salmonella typhimurium O-antigen. FEMS Immunology and Medical Microbiology, 26(1), 83–92. https://doi.org/10.1111/j.1574-695X.1999.tb01374.x
+
 Lê-Bury, G., & Méresse, S. (2017). The modulation of host cell death pathways by intracellular bacterial pathogens. Microbes and Infection, 19(9-10), 452–459. https://doi.org/10.1016/j.micinf.2017.04.002
+
 Liyanage, K., Samarakoon, H., Parameswaran, S., & Gamaarachchi, H. (2023). Efficient end-to-end long-read sequence mapping using minimap2-FPGA integrated with hardware accelerated chaining. Scientific Reports, 13(1), 20174. https://doi.org/10.1038/s41598-023-47354-8
+
 Nagai, H., & Roy, C. R. (2020). The DotA/IcmT4SS of Legionella pneumophila and Coxiella burnetii. Frontiers in Cellular and Infection Microbiology, 10, 139. https://doi.org/10.3389/fcimb.2020.00139
+
 Oxford Nanopore assembly using Flye. (2025). Purdue University Research Computing. Retrieved January 18, 2026, from https://rcac-bioinformatics.github.io/genome-assembly/oxford-nanopore-assembly.html
-Purushothaman, S., Roloff, T., Egli, A., & Seth-Smith, H. M. B. (2026). Benchmarking Illumina and Oxford Nanopore Technologies (ONT) sequencing platforms for whole genome sequencing of bacterial genomes and use in clinical microbiology. BMC Medical Genomics, 19(1), 16. https://doi.org/10.1186/s12920-025-02305-2
+
+Purushothaman, S., Roloff, T., Egli, A., & Seth-Smith, H. M. B. (2026). Benchmarking Illumina and Oxford Nanopore Technologies (ONT) sequencing platforms for whole genome sequencing of bacterial genomes and use in clinical 
+
+microbiology. BMC Medical Genomics, 19(1), 16. https://doi.org/10.1186/s12920-025-02305-2
+
 Saada, B., Zhang, T., Siga, E., Zhang, J., & Muniz, M. M. M. (2024). Whole-genome alignment: Methods, challenges, and future directions. Applied Sciences, 14(11), 4837. https://doi.org/10.3390/app14114837
+
 Tang, W., & Liu, J. (2022). Conjugative plasmids and the spread of antibiotic resistance genes. Plasmid, 119, 102609. https://doi.org/10.1016/j.plasmid.2022.102609
+
 Wick, R. R., Judd, L. M., & Holt, K. E. (2023). Assembling the perfect bacterial genome using Oxford Nanopore and Illumina sequencing. PLOS Computational Biology, 19(3), e1010905. https://doi.org/10.1371/journal.pcbi.1010905
+
 Zhang, Y., Xiao, L., Lai, X., Liu, S., Peng, L., Dai, M., & Bi, J. (2020). The Salmonella effector protein SspH2 suppresses macrophage inflammatory cytokine production via the inhibition of JNK-mediated signaling pathways. Frontiers in Immunology, 11, 940. https://doi.org/10.3389/fimmu.2020.00940
 Zhao, W., Zeng, W., Pang, B., Luo, M., Peng, Y., Xu, J., Kan, B., Li, Z., & Lu, X. (2023). Oxford Nanopore long-read sequencing enables the generation of complete bacterial and plasmid genomes without short-read sequencing. Frontiers in Microbiology, 14, 1179966. https://doi.org/10.3389/fmicb.2023.1179966
 
