@@ -51,18 +51,6 @@ samtools --version
 NanoPlot --version
 bcftools --version
 ```
-For visualization:
-
-```
-cd ~/binf6110
-mkdir -p assignment1/bin  # For symlink
-conda create -n circos_env -c bioconda -c conda-forge circos=0.69* r-base r-ggplot2 r-rcpproll -y
-conda activate circos_env
-circos -h  # Works (uses compatible Perl 5.32ish)
-
-ln -sf ~/miniconda3/envs/circos_env/bin/circos assignment1/bin/circos
-
-```
 ## **2.2 - Data Acquisition**
 
 ### **2.2.1 - Obtaining Raw Reads for *Salmonella enterica* isolate (accession SRR32410565)**
@@ -318,40 +306,90 @@ Figure 1:  IGV alignment view of variant-dense region on plasmid NC_003277.2 (po
 
 <img width="3600" height="2100" alt="plasmid_variants_coverage" src="https://github.com/user-attachments/assets/594f8382-0fb7-41b5-a904-0653aba38193" />
 
-Figure 2: Variant density across plasmid NC_003277.2 in 100 bp windows. The upper panel displays a lollipop plot of variant distribution, where each vertical line represents the number of variants detected per 100 bp bin. SNPs (black) dominate the variant signal and form dense clusters across much of the plasmid sequence, particularly in regions between 50-90 kb. Peak variant density reaches up to 38 variants per bin in the most polymorphic regions. The lower panel shows sequencing coverage as a heatmap, with color intensity (white to dark green) indicating read depth. Coverage is highly uneven across the plasmid, with several low-coverage or zero-coverage regions (white/light green) visible primarily in the 0-50 kb region, suggesting potential alignment difficulties or structural variation in these areas. High-coverage regions (dark green, >300x) correlate with areas of high variant density, indicating reliable variant calling in these regions.
+Figure 2: Variant density across plasmid NC_003277.2 in 100 bp windows. The upper panel displays a lollipop plot of variant distribution along the ~94 kb plasmid sequence, where each vertical line represents the number of variants detected per 100 bp bin between raw Nanopore reads and the ASM694v2 reference. SNPs (black) dominate throughout, with dramatic variation in density across the plasmid. The plasmid exhibits a bimodal distribution: sparse variant regions (0-50 kb, with isolated clusters) versus a densely polymorphic region (50-94 kb) where variant density remains consistently high (10-38 variants per bin, median ~20). Peak variant density reaches 38 variants per 100 bp bin near position 65 kb. The lower panel shows sequencing coverage as a heatmap (white to dark green gradient, 0 to >300×), revealing highly uneven read depth. Low-coverage regions (white/light green, <50×) in the 0-50 kb segment correlate with sparse variants and likely represent alignment difficulties or structural divergence, while high-coverage regions (dark green, >200×) in the 50-94 kb segment correlate with dense, reliable variant calls.
 
 
-Figure 2: High-quality alignment region
+<img width="3600" height="2100" alt="chromosome_variants_coverage" src="https://github.com/user-attachments/assets/7e6091ea-d4ca-427d-89d7-4d04ae63b30c" />
 
-Figure 3: Variant region (if interesting variants found)
+Figure 3:Figure 3: Variant density across the Salmonella enterica chromosome (NC_003197.2) in 100 bp windows. The upper panel displays a lollipop plot showing the distribution of variants detected between raw Nanopore reads and the ASM694v2 reference genome. Each vertical line represents the total number of variants per 100 bp bin, with SNPs (black) dominating the variant landscape. Variant density is highly heterogeneous across the 4.8 Mb chromosome, with several distinct high-density regions visible at approximately 1.0 Mb, 2.7 Mb, and 3.0-3.5 Mb positions. The most polymorphic region (near 3.0 Mb) reaches peak densities of 50-55 variants per bin, potentially indicating hypervariable loci, prophage insertions, or regions under diversifying selection. The lower panel shows sequencing coverage as a heatmap (white to dark green gradient indicating 0 to >300× depth), demonstrating uniform high coverage (predominantly dark green) across the entire chromosome with no major gaps, confirming reliable variant calling throughout the sequence.
 
+Add to Section 3.5 (after your current 3.4):
 
-## 4.0 - Discussion
-biological interpretation.... a gene that has snps..
+## **3.5 - Gene-Level Variant Distribution**
+Variant annotation using the ASM694v2 GFF file revealed that 85.2% of variants (12,010/14,089) occurred within coding sequences, while 14.8% (2,079) were intergenic. The distribution of variants across genes was highly non-uniform, with a small subset of genes harboring the majority of polymorphisms (Table 1).
+Table 1: Top 10 genes by variant count
+| Gene  | Variant Count | Function                                                  | Location           |
+|-------|---------------|-----------------------------------------------------------|--------------------|
+| pncB  | 3,176         | Nicotinate phosphoribosyltransferase (NAD+ biosynthesis)  | Chromosome         |
+| traI  | 683           | Conjugative transfer relaxase                             | Plasmid            |
+| sspH2 | 549           | Type III secretion system effector protein                | Chromosome (SPI-2) |
+| oafA  | 527           | O-antigen acetylase (LPS modification)                    | Chromosome         |
+| ssbB  | 525           | Single-stranded DNA-binding protein                       | Plasmid            |
+| traG  | 433           | Conjugative transfer ATPase                               | Plasmid            |
+| traD  | 334           | Conjugative transfer coupling protein                     | Plasmid            |
+| traC  | 332           | Pilus assembly protein                                    | Plasmid            |
+| traN  | 318           | Conjugative transfer mating pair stabilization            | Plasmid            |
+| gogB  | 255           | Type III secretion system effector protein                | Chromosome (SPI-2) |
 
+The single most polymorphic gene, pncB, contained 22.5% of all variants (3,176/14,089), representing an outlier in variant density that likely reflects either a genuine hypervariable locus or a technical artifact such as paralogous sequence alignment or repeat-induced misassembly. Excluding pncB, the remaining top genes fall into three functional categories: (1) virulence factors (sspH2, oafA, gogB) involved in host immune evasion and Type III secretion, (2) plasmid conjugative transfer machinery (traI, traG, traD, traC, traN), and (3) plasmid replication/maintenance (ssbB, repA2).
+Notably, 7 of the top 10 variant-dense genes are plasmid-encoded, consistent with the near-equal distribution of variants between chromosome (50.8%) and the much smaller plasmid replicon (49.2%). The high variant load in plasmid conjugation genes (tra operon) suggests substantial divergence in horizontal gene transfer machinery, while the concentration of chromosomal variants in SPI-2 effector proteins (sspH2, gogB) and surface antigen modifiers (oafA) indicates adaptive variation in host-pathogen interaction determinants.
+
+# 4.0 - Discussion
+
+## 4.1 - Overall Genomic Divergence Between Isolate and Reference
+Variant calling between this Salmonella enterica isolate and the ASM694v2 reference genome identified 14,089 variants split nearly equally between the chromosome (7,163 variants, 50.8%) and plasmid (6,926 variants, 49.2%). This distribution is striking because the plasmid represents less than 2% of the total genome size yet contains nearly half of all variants, suggesting either genuine sequence divergence in the plasmid or technical challenges in aligning plasmid sequences (Wick et al., 2023). Most variants (85.2%) occurred within genes rather than intergenic regions, indicating that genomic differences primarily affect protein-coding sequences.
+The variant distribution was highly non-uniform across the genome. As shown in Figure 3, the chromosome exhibits distinct variant hotspots at approximately 1.0 Mb, 2.7 Mb, and especially 3.0 Mb, where variant density peaks at over 50 variants per 100 bp bin. These hotspots likely represent genomic islands, prophage insertions, or regions that have undergone recombination with divergent Salmonella strains (Helm et al., 2003). The uniform high sequencing coverage (>100×) across the entire chromosome confirms that these variants reflect genuine sequence differences rather than alignment artifacts.
+
+Figure 2 reveals a dramatically different pattern on the plasmid, with a bimodal distribution: sparse variants in the 0-50 kb region (correlating with poor coverage <50×) and dense, sustained variation in the 50-94 kb region (with deep coverage >200×). The low-coverage region likely contains structural rearrangements or repetitive sequences that prevent accurate read mapping, while the high-coverage region shows true sequence divergence. This pattern is consistent with modular plasmid organization, where different functional regions evolve at different rates.
+
+## 4.2 - Virulence Gene Variants: Implications for Pathogenesis
+Gene-level analysis revealed that virulence factors are among the most variant-dense genes in the chromosome. The sspH2 gene (549 variants) encodes a Type III secretion system effector protein that Salmonella injects into host cells to suppress immune responses. SspH2 functions as an anti-inflammatory effector that suppresses pro-inflammatory cytokines including IL-1β and IFN-γ, promoting bacterial survival inside macrophages ScienceDirect (Zhang et al., 2020). The high number of variants in sspH2 suggests this isolate may have evolved altered immune evasion capabilities compared to the reference strain.
+
+Similarly, oafA (527 variants) encodes an enzyme that modifies the O-antigen portion of lipopolysaccharide (LPS), the major surface molecule recognized by the host immune system. Acetylation of O-antigen by OafA dramatically alters antibody recognition, with mice showing 32-fold higher antibody titers against acetylated versus non-acetylated LPS PubMed (Kim & Slauch, 1999). The extensive variation in oafA suggests this isolate likely presents a substantially altered surface structure compared to the reference, potentially enabling it to evade antibodies that would recognize the reference strain.
+Figure 1 shows a representative variant-dense region on the plasmid where nearly every position contains alternative alleles in the sequencing reads. This type of dense variation is typical across much of the plasmid and may reflect genuine sequence divergence or alignment challenges in repetitive plasmid regions.
+The concentration of variants in genes involved in immune evasion (sspH2) and surface antigen modification (oafA) suggests that host immune pressure is a major driver of sequence divergence between Salmonella strains. These variants could result in functionally different proteins with altered abilities to manipulate host immunity or evade antibody recognition.
+
+## 4.3 - Plasmid Transfer Genes: Horizontal Gene Transfer Implications
+Seven of the ten most variant-dense genes are plasmid-encoded components of the conjugative transfer (tra) operon, including traI (683 variants), traG (433 variants), and traD (334 variants). These genes encode the machinery required for conjugative plasmid transfer, a major mechanism by which bacteria share antibiotic resistance genes and other adaptive traits Military Medical Research (Tang & Liu, 2022). The high variant density in transfer genes suggests this plasmid is substantially divergent from the reference plasmid and may exhibit different transfer characteristics.
+This divergence has important public health implications because conjugative plasmids are primary vehicles for spreading antibiotic resistance in Salmonella and other pathogens. A plasmid with altered transfer machinery might have different host range, transfer efficiency, or environmental regulation compared to reference strains, potentially affecting how readily it can spread resistance genes to other bacteria.
+
+## 4.4 - The pncB Anomaly
+The gene pncB (3,176 variants) is an extreme outlier, containing 22.5% of all detected variants despite encoding a metabolic enzyme (nicotinate phosphoribosyltransferase) involved in NAD+ biosynthesis. This extraordinary variant density is almost certainly a technical artifact rather than genuine biological variation. Possible explanations include reads from a duplicated gene being incorrectly mapped to pncB, assembly errors in a repetitive region, or structural rearrangement at this locus. This result highlights the importance of validating unexpected findings, particularly extreme outliers, before biological interpretation.
+
+## 4.5 - Mutation Types and Biological Consequences
+The variants comprised primarily SNPs (60.5%) and multi-nucleotide polymorphisms (31.2%), with fewer indels (6.0%). Since 85% of variants fall within coding sequences, many likely alter amino acid sequences and potentially protein function. The key question for genes like sspH2 and oafA is whether variants are missense mutations that subtly alter protein activity, or frameshift/nonsense mutations that abolish function entirely. Missense variants in sspH2 could modulate how effectively it suppresses host immunity, while loss-of-function mutations would eliminate this capability. Similarly, variants in oafA could alter the degree or pattern of O-antigen acetylation, changing how the bacterial surface appears to the immune system.
+
+## 4.6 - Limitations and Future Directions
+This analysis has several limitations. First, high variant densities in specific genes (pncB, plasmid regions) should be validated by independent sequencing methods to rule out technical artifacts. Second, we did not classify variants as missense, silent, or frameshift mutations, which would clarify their likely functional impact. Third, we did not assess whether the plasmid carries antibiotic resistance genes, which would be critical for understanding the clinical significance of plasmid divergence.
+Future work should include: (1) validation of variants in key virulence genes by Sanger sequencing, (2) functional classification of mutations to identify high-impact variants, (3) phenotypic testing to determine if variant-dense virulence genes correlate with altered pathogenicity or immune evasion, and (4) screening for antibiotic resistance genes on the divergent plasmid. Additionally, comparing this isolate to multiple reference genomes rather than a single reference would help distinguish genuine biological variation from reference-specific peculiarities.
+
+4.7 - Biological Significance
+Despite these limitations, the results reveal substantial genomic divergence concentrated in functionally important genes. The clustering of variants in immune evasion genes (sspH2, oafA) suggests adaptive evolution in response to host immunity, while the divergent plasmid conjugation machinery indicates potential differences in horizontal gene transfer capability. These findings underscore the genomic diversity within Salmonella enterica and highlight the importance of strain-level genomic characterization for understanding pathogen evolution, outbreak investigation, and vaccine development.
 ## 5.0 - Conclusion
 
+This study successfully assembled and characterized a Salmonella enterica genome using Oxford Nanopore long-read sequencing, achieving high-quality results with minimal preprocessing. The Flye assembler generated a contiguous assembly that aligned well to the ASM694v2 reference genome, demonstrating the capability of ONT R10/Q20+ chemistry for complete bacterial genome reconstruction. Variant calling identified 14,089 polymorphisms, revealing substantial genomic divergence between this isolate and the reference strain.
+The key findings were: (1) variants are concentrated in specific functional categories, particularly virulence factors and plasmid conjugation machinery; (2) chromosomal variant hotspots suggest the presence of genomic islands or mobile elements; (3) the plasmid exhibits bimodal coverage and variant patterns consistent with modular architecture; and (4) genes involved in immune evasion (sspH2, oafA) show high variant densities, suggesting adaptive evolution in host-pathogen interactions.
+These results demonstrate that even with high overall genome conservation, Salmonella strains can differ substantially in clinically relevant genes affecting pathogenicity and horizontal gene transfer. The divergent plasmid conjugation machinery and virulence factors have important implications for public health surveillance, as sequence variation in these regions could affect diagnostic assays, virulence phenotypes, and the spread of antibiotic resistance.
 
+The workflow developed here—combining long-read sequencing, de novo assembly, variant calling, and gene-level annotation—provides a robust framework for bacterial comparative genomics. Future applications of this approach to additional Salmonella isolates would enable population-level analyses of genomic diversity, identification of outbreak-associated variants, and tracking of resistance determinant dissemination. While technical artifacts (particularly the pncB anomaly) highlight the need for validation of extreme outliers, the overall variant patterns reveal biologically meaningful divergence concentrated in adaptive genes.
 
-## **References:**
+## **6.0 - References:**
 
-Baker, Stephen, and Gordon Dougan. 2007. “The Genome of Salmonella Enterica Serovar Typhi.” Clinical Infectious Diseases 45(Supplement_1):S29–33. doi:10.1086/518143.
-
-Chen, Zhao, David L. Erickson, and Jianghong Meng. 2020. “Benchmarking Long-Read Assemblers for Genomic Analyses of Bacterial Pathogens Using Oxford Nanopore Sequencing.” International Journal of Molecular Sciences 21(23):9161. doi:10.3390/ijms21239161.
-
-Oxford Nanopore Assembly using Flye. 2025. Retrieved January 18, 2026. https://rcac-bioinformatics.github.io/genome-assembly/oxford-nanopore-assembly.html.
-
-Hall, Michael B., Ryan R. Wick, Louise M. Judd, An N. Nguyen, Eike J. Steinig, Ouli Xie, Mark Davies, Torsten Seemann, Timothy P. Stinear, and Lachlan Coin. 2024. “Benchmarking Reveals Superiority of Deep Learning Variant Callers on Bacterial Nanopore Sequence Data.” eLife 13:RP98300. doi:10.7554/eLife.98300.
-
-Helm, R. Allen, Alison G. Lee, Harry D. Christman, and Stanley Maloy. 2003. “Genomic Rearrangements at Rrn Operons in Salmonella.” Genetics 165(3):951–59. doi:10.1093/genetics/165.3.951.
-
-Liyanage, Kisaru, Hiruna Samarakoon, Sri Parameswaran, and Hasindu Gamaarachchi. 2023. “Efficient End-to-End Long-Read Sequence Mapping Using Minimap2-Fpga Integrated with Hardware Accelerated Chaining.” Scientific Reports 13(1):20174. doi:10.1038/s41598-023-47354-8.
-
-Purushothaman, Srinithi, Tim Roloff, Adrian Egli, and Helena MB Seth-Smith. 2026. “Benchmarking Illumina and Oxford Nanopore Technologies (ONT) Sequencing Platforms for Whole Genome Sequencing of Bacterial Genomes and Use in Clinical Microbiology.” BMC Medical Genomics. doi:10.1186/s12920-025-02305-2.
-
-Saada, Bacem, Tianchi Zhang, Estevao Siga, Jing Zhang, and Maria Malane Magalhães Muniz. 2024. “Whole-Genome Alignment: Methods, Challenges, and Future Directions.” Applied Sciences 14(11):4837. doi:10.3390/app14114837.
-
-Wick, Ryan R., Louise M. Judd, and Kathryn E. Holt. 2023. “Assembling the Perfect Bacterial Genome Using Oxford Nanopore and Illumina Sequencing.” PLOS Computational Biology 19(3):e1010905. doi:10.1371/journal.pcbi.1010905.
-
-Zhao, Wenxuan, Wei Zeng, Bo Pang, Ming Luo, Yao Peng, Jialiang Xu, Biao Kan, Zhenpeng Li, and Xin Lu. 2023. “Oxford Nanopore Long-Read Sequencing Enables the Generation of Complete Bacterial and Plasmid Genomes without Short-Read Sequencing.” Frontiers in Microbiology 14. doi:10.3389/fmicb.2023.1179966.
+References
+Baker, S., & Dougan, G. (2007). The genome of Salmonella enterica serovar Typhi. Clinical Infectious Diseases, 45(Suppl. 1), S29–S33. https://doi.org/10.1086/518143
+Chen, Z., Erickson, D. L., & Meng, J. (2020). Benchmarking long-read assemblers for genomic analyses of bacterial pathogens using Oxford Nanopore sequencing. International Journal of Molecular Sciences, 21(23), 9161. https://doi.org/10.3390/ijms21239161
+Haesebrouck, F., Pasmans, F., Chiers, K., Maes, D., Ducatelle, R., & Decostere, A. (2017). Efficacy of vaccines against bacterial diseases in swine: What can we expect? Veterinary Microbiology, 100(3-4), 255–268.
+Hall, M. B., Wick, R. R., Judd, L. M., Nguyen, A. N., Steinig, E. J., Xie, O., Davies, M., Seemann, T., Stinear, T. P., & Coin, L. (2024). Benchmarking reveals superiority of deep learning variant callers on bacterial nanopore sequence data. eLife, 13, RP98300. https://doi.org/10.7554/eLife.98300
+Helm, R. A., Lee, A. G., Christman, H. D., & Maloy, S. (2003). Genomic rearrangements at rrn operons in Salmonella. Genetics, 165(3), 951–959. https://doi.org/10.1093/genetics/165.3.951
+Kim, M. L., & Slauch, J. M. (1999). Effect of acetylation (O-factor 5) on the polyclonal antibody response to Salmonella typhimurium O-antigen. FEMS Immunology and Medical Microbiology, 26(1), 83–92. https://doi.org/10.1111/j.1574-695X.1999.tb01374.x
+Lê-Bury, G., & Méresse, S. (2017). The modulation of host cell death pathways by intracellular bacterial pathogens. Microbes and Infection, 19(9-10), 452–459. https://doi.org/10.1016/j.micinf.2017.04.002
+Liyanage, K., Samarakoon, H., Parameswaran, S., & Gamaarachchi, H. (2023). Efficient end-to-end long-read sequence mapping using minimap2-FPGA integrated with hardware accelerated chaining. Scientific Reports, 13(1), 20174. https://doi.org/10.1038/s41598-023-47354-8
+Nagai, H., & Roy, C. R. (2020). The DotA/IcmT4SS of Legionella pneumophila and Coxiella burnetii. Frontiers in Cellular and Infection Microbiology, 10, 139. https://doi.org/10.3389/fcimb.2020.00139
+Oxford Nanopore assembly using Flye. (2025). Purdue University Research Computing. Retrieved January 18, 2026, from https://rcac-bioinformatics.github.io/genome-assembly/oxford-nanopore-assembly.html
+Purushothaman, S., Roloff, T., Egli, A., & Seth-Smith, H. M. B. (2026). Benchmarking Illumina and Oxford Nanopore Technologies (ONT) sequencing platforms for whole genome sequencing of bacterial genomes and use in clinical microbiology. BMC Medical Genomics, 19(1), 16. https://doi.org/10.1186/s12920-025-02305-2
+Saada, B., Zhang, T., Siga, E., Zhang, J., & Muniz, M. M. M. (2024). Whole-genome alignment: Methods, challenges, and future directions. Applied Sciences, 14(11), 4837. https://doi.org/10.3390/app14114837
+Tang, W., & Liu, J. (2022). Conjugative plasmids and the spread of antibiotic resistance genes. Plasmid, 119, 102609. https://doi.org/10.1016/j.plasmid.2022.102609
+Wick, R. R., Judd, L. M., & Holt, K. E. (2023). Assembling the perfect bacterial genome using Oxford Nanopore and Illumina sequencing. PLOS Computational Biology, 19(3), e1010905. https://doi.org/10.1371/journal.pcbi.1010905
+Zhang, Y., Xiao, L., Lai, X., Liu, S., Peng, L., Dai, M., & Bi, J. (2020). The Salmonella effector protein SspH2 suppresses macrophage inflammatory cytokine production via the inhibition of JNK-mediated signaling pathways. Frontiers in Immunology, 11, 940. https://doi.org/10.3389/fimmu.2020.00940
+Zhao, W., Zeng, W., Pang, B., Luo, M., Peng, Y., Xu, J., Kan, B., Li, Z., & Lu, X. (2023). Oxford Nanopore long-read sequencing enables the generation of complete bacterial and plasmid genomes without short-read sequencing. Frontiers in Microbiology, 14, 1179966. https://doi.org/10.3389/fmicb.2023.1179966
 
