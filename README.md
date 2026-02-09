@@ -1,6 +1,6 @@
 # **Genome Assembly and Reference Comparison of *Salmonella enterica***
 Author: Vian Lelo
-Date created: January 20th, 2026, Updated: February 8th, 2026
+Date created: January 20th, 2026, Last Updated: February 8th, 2026
 
 # 1.0 - Introduction
 
