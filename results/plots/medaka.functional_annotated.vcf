@@ -1,0 +1,1 @@
+ -c snpEff.config -v ASM694v2 -s /home/vian/binf6110/assignment1/results/vcf/summary.html results/vcf/medaka_reads_only/medaka.af.vcf.gz

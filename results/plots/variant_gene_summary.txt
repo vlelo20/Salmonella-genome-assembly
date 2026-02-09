@@ -1,0 +1,32 @@
+
+=== Top 20 genes by variant count ===
+   3176 pncB
+    683 traI
+    549 sspH2
+    527 oafA
+    525 ssbB
+    433 traG
+    334 traD
+    332 traC
+    318 traN
+    255 gogB
+    250 samA
+    224 traB
+    194 traU
+    179 repA2
+    173 traH
+    169 10Sa
+    152 psiA
+    141 traP
+    136 trbH
+    132 traK
+
+=== Variant types ===
+   8519 SNP
+   4396 MNP
+    840 INDEL
+    334 OTHER
+
+=== Genic vs Intergenic ===
+  12010 genic
+   2079 intergenic
