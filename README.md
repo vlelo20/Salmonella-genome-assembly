@@ -408,10 +408,9 @@ Figure 3: Variant density across the Salmonella enterica chromosome (NC_003197.2
 
 ## **3.5 - Gene-Level Variant Distribution**
 Variant annotation using the ASM694v2 GFF file revealed that 85.2% of variants (12,010/14,089) occurred within coding sequences, while 14.8% (2,079) were intergenic. The distribution of variants across genes was highly non-uniform, with a small subset of genes harboring the majority of polymorphisms (Table 1).
-Table 1: Top 10 genes by variant count
+Table 1: Selected high-variant genes
 | Gene  | Variant Count | Function                                                  | Location           |
 |-------|---------------|-----------------------------------------------------------|--------------------|
-| pncB  | 3,176         | Nicotinate phosphoribosyltransferase (NAD+ biosynthesis)  | Chromosome         |
 | traI  | 683           | Conjugative transfer relaxase                             | Plasmid            |
 | sspH2 | 549           | Type III secretion system effector protein                | Chromosome (SPI-2) |
 | oafA  | 527           | O-antigen acetylase (LPS modification)                    | Chromosome         |
@@ -422,7 +421,7 @@ Table 1: Top 10 genes by variant count
 | traN  | 318           | Conjugative transfer mating pair stabilization            | Plasmid            |
 | gogB  | 255           | Type III secretion system effector protein                | Chromosome (SPI-2) |
 
-The single most polymorphic gene, pncB, contained 22.5% of all variants (3,176/14,089), representing an outlier in variant density that likely reflects either a genuine hypervariable locus or a technical artifact such as paralogous sequence alignment or repeat-induced misassembly. Excluding pncB, the remaining top genes fall into three functional categories: (1) virulence factors (sspH2, oafA, gogB) involved in host immune evasion and Type III secretion, (2) plasmid conjugative transfer machinery (traI, traG, traD, traC, traN), and (3) plasmid replication/maintenance (ssbB, repA2).
+Notably, many of the most variant-dense genes were plasmid-encoded conjugation genes (tra operon) and chromosomal virulence-associated loci (e.g., sspH2, oafA, gogB), representing an outlier in variant density that likely reflects either a genuine hypervariable locus or a technical artifact such as paralogous sequence alignment or repeat-induced misassembly. Excluding pncB, the remaining top genes fall into three functional categories: (1) virulence factors (sspH2, oafA, gogB) involved in host immune evasion and Type III secretion, (2) plasmid conjugative transfer machinery (traI, traG, traD, traC, traN), and (3) plasmid replication/maintenance (ssbB, repA2).
 Notably, 7 of the top 10 variant-dense genes are plasmid-encoded, consistent with the near-equal distribution of variants between chromosome (50.8%) and the much smaller plasmid replicon (49.2%). The high variant load in plasmid conjugation genes (tra operon) suggests substantial divergence in horizontal gene transfer machinery, while the concentration of chromosomal variants in SPI-2 effector proteins (sspH2, gogB) and surface antigen modifiers (oafA) indicates adaptive variation in host-pathogen interaction determinants.
 
 ## 3.6 - Functional Variant Classification
@@ -462,7 +461,7 @@ Functional annotation reveals a highly divergent genomic landscape, with nearly 
 | Stop gained | 76 | 0.5% | -1 variant |
 | Other effects | <85 | <0.6% | -5 variants |
 
-The exclusion of the pncB gene was performed to assess if the extreme variant density observed in that region (3,176 raw variants) was skewing the overall functional profile. As shown in the table, the percentage distribution of effect types remains virtually identical after exclusion. This confirms that the high rate of missense and synonymous variation is a genome-wide feature of this Salmonella isolate rather than an artifact driven by a single hyper-variable or poorly mapped locus.
+The exclusion of pncB (57 variants) was performed as a sensitivity analysis to assess whether variants in a single locus were influencing the overall functional-effect profile. As shown in the table, the percentage distribution of effect types remains virtually identical after exclusion. This confirms that the high rate of missense and synonymous variation is a genome-wide feature of this Salmonella isolate rather than an artifact driven by a single hyper-variable or poorly mapped locus.
 
 **High-impact variants** (protein-truncating): 740 total (5.3%), composed of:
 - 423 frameshift mutations causing reading frame shifts
@@ -546,13 +545,13 @@ Seven of the ten most variant-dense genes are plasmid-encoded components of the 
 This divergence has important public health implications because conjugative plasmids are primary vehicles for spreading antibiotic resistance in Salmonella and other pathogens. A plasmid with altered transfer machinery might have different host range, transfer efficiency, or environmental regulation compared to reference strains, potentially affecting how readily it can spread resistance genes to other bacteria.
 
 ## 4.5 - The pncB Anomaly
-The gene pncB (3,176 variants) is an extreme outlier, containing 22.5% of all detected variants despite encoding a metabolic enzyme (nicotinate phosphoribosyltransferase) involved in NAD+ biosynthesis. This extraordinary variant density is almost certainly a technical artifact rather than genuine biological variation. Possible explanations include reads from a duplicated gene being incorrectly mapped to pncB, assembly errors in a repetitive region, or structural rearrangement at this locus. This result highlights the importance of validating unexpected findings, particularly extreme outliers, before biological interpretation.
+Gene-level summaries initially suggested pncB might be an outlier; however, gene-linked counting from the SnpEff-annotated VCF indicates pncB contains 57 variants (~0.4% of total). Excluding pncB therefore served as a sensitivity analysis, and the functional-effect distribution remained essentially unchanged, supporting that the main conclusions are not driven by a single locus.
 
 ## 4.6 - Mutation Types and Biological Consequences
 The variants comprised primarily SNPs (60.5%) and multi-nucleotide polymorphisms (31.2%), with fewer indels (6.0%). Since 85% of variants fall within coding sequences, many likely alter amino acid sequences and potentially protein function. The key question for genes like sspH2 and oafA is whether variants are missense mutations that subtly alter protein activity, or frameshift/nonsense mutations that abolish function entirely. Missense variants in sspH2 could modulate how effectively it suppresses host immunity, while loss-of-function mutations would eliminate this capability. Similarly, variants in oafA could alter the degree or pattern of O-antigen acetylation, changing how the bacterial surface appears to the immune system.
 
 ## 4.7 - Limitations and Future Directions
-This analysis has several limitations. First, high variant densities in specific genes (pncB, plasmid regions) should be validated by independent sequencing methods to rule out technical artifacts. Second, we did not classify variants as missense, silent, or frameshift mutations, which would clarify their likely functional impact. Third, we did not assess whether the plasmid carries antibiotic resistance genes, which would be critical for understanding the clinical significance of plasmid divergence.
+This analysis has several limitations. First, high variant densities in specific genes (pncB, plasmid regions) should be validated by independent sequencing methods to rule out technical artifacts. Second, while we used SnpEff to classify variants into predicted impact categories (e.g., synonymous, missense, frameshift, stop-gained), these annotations are computational predictions and were not experimentally validated. Third, we did not assess whether the plasmid carries antibiotic resistance genes, which would be critical for understanding the clinical significance of plasmid divergence.
 Future work should include: (1) validation of variants in key virulence genes by Sanger sequencing, (2) functional classification of mutations to identify high-impact variants, (3) phenotypic testing to determine if variant-dense virulence genes correlate with altered pathogenicity or immune evasion, and (4) screening for antibiotic resistance genes on the divergent plasmid. Additionally, comparing this isolate to multiple reference genomes rather than a single reference would help distinguish genuine biological variation from reference-specific peculiarities.
 
 4.8 - Biological Significance
