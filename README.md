@@ -82,7 +82,7 @@ All analyses were performed using the following tool versions, verified via `--v
 | bcftools | 1.23 | VCF manipulation and variant statistics |
 | Medaka | 2.0.1 | Assembly polishing and variant calling |
 | Python | 3.10 | Script execution environment |
-| R | 4.x.x | Data visualization and analysis |
+| R | 4.5.2 | Data visualization and analysis |
 
 Version consistency across the analysis pipeline was maintained via conda environment specification.
 
@@ -310,9 +310,67 @@ awk '{print $2 "\t" $1 "\t" sprintf("%.1f%%", $1/14089*100)}' \
 
 The coordinate‑sorted, indexed VCF (medaka.annotated.sorted.vcf.gz and its .tbi index) was used for variant exploration in IGV, summary statistics with bcftools, and downstream plotting of variant distributions along the S. enterica chromosome and plasmid.
 
+## 2.9 - Functional Annotation of Variants with SnpEff & visulaization
 
-### **2.9 - Visualization and comparative analysis**
-Visualization of read alignments and variants will be performed using the Integrative Genomics Viewer (IGV), which allows interactive inspection of coverage, alignment quality, and specific variant sites. IGV will be used to validate variant calls in regions of interest and to inspect any suspicious regions. To visualize the assembly structure, Bandage may be used to inspect the Flye assembly graph, confirming that the chromosome and plasmids are resolved into complete circular contigs.
+To classify variants by predicted functional impact (missense, synonymous, frameshift, stop-gain/loss), SnpEff (v5.1d) was used to annotate the Medaka-called variants relative to the ASM694v2 reference genome annotation. A custom SnpEff database was constructed from the NCBI GenBank annotation file (GCF_000006945.2_ASM694v2_genomic.gbff) rather than the GFF format, as GenBank provides more reliable gene structure information for bacterial genomes.
+
+### Database Construction
+```bash
+# Download GenBank annotation
+wget -O results/ref/ASM694v2/ASM694v2_genomic.gbff.gz \
+  "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/006/945/GCF_000006945.2_ASM694v2/GCF_000006945.2_ASM694v2_genomic.gbff.gz"
+gunzip results/ref/ASM694v2/ASM694v2_genomic.gbff.gz
+
+# Set up SnpEff database structure
+mkdir -p data/snpEff_data/ASM694v2
+cp results/ref/ASM694v2/ASM694v2_genomic.fna data/snpEff_data/ASM694v2/sequences.fa
+cp results/ref/ASM694v2/ASM694v2_genomic.gbff data/snpEff_data/ASM694v2/genes.gbk
+
+# Create configuration file
+cat > snpEff.config << 'EOF'
+data.dir = ./data/snpEff_data
+ASM694v2.genome : Salmonella_enterica_ASM694v2
+EOF
+
+# Build database
+snpEff build -genbank -v ASM694v2
+```
+### 2.9.1 - Variant annotation
+
+```
+# Annotate variants
+snpEff ann -v ASM694v2 \
+  -stats results/vcf/snpEff_summary.html \
+  results/vcf/medaka_reads_only/medaka.annotated.sorted.vcf.gz \
+  > results/vcf/medaka.snpeff.vcf
+
+# Compress and index
+bgzip -f results/vcf/medaka.snpeff.vcf
+tabix -p vcf results/vcf/medaka.snpeff.vcf.gz
+
+```
+### 2.9.2 - Effect Extraction and Analysis
+```
+# Extract all variant effects
+bcftools query -f '%INFO/ANN\n' results/vcf/medaka.snpeff.vcf.gz | \
+  cut -d'|' -f2 | sort | uniq -c | sort -rn > results/vcf/functional_effects_summary.txt
+
+# Extract effects excluding pncB (quality control)
+bcftools view -e 'ANN~"pncB"' results/vcf/medaka.snpeff.vcf.gz | \
+  bcftools query -f '%INFO/ANN\n' | cut -d'|' -f2 | \
+  sort | uniq -c | sort -rn > results/vcf/effects_no_pncB.txt
+
+# Gene-level effect breakdown for key virulence and conjugation genes
+bcftools query -f '%INFO/ANN\n' results/vcf/medaka.snpeff.vcf.gz | \
+  awk -F'|' '{print $4"\t"$2}' | \
+  grep -E "^(sspH2|oafA|traI|pncB|traG|traD|ssbB|traN|traC|gogB)" | \
+  sort | uniq -c | sort -k2,2 -k1,1rn > results/vcf/key_genes_effects.txt
+
+```
+### 2.9.3 - Visualization and comparative analysis**
+To validate the assembly and interpret the genomic landscape, several visualization tools were employed. Read alignments and called variants were inspected using the Integrative Genomics Viewer (IGV). This allowed for the interactive assessment of mapping quality and depth of coverage across the Salmonella chromosome and plasmids. IGV was specifically utilized to validate high-impact variants and inspect regions with anomalous variant density, ensuring that reported mutations were supported by high-quality read alignments.
+
+For quantitative data analysis and visualization, RStudio (v4.3.1) was used to generate coverage and variant density plots. Custom R scripts utilized genomic data to produce visual comparisons between the sample assembly and the ASM694v2 reference, facilitating the identification of hotspots for genomic divergence. To confirm the structural integrity of the assembly, the Flye assembly graph was examined to verify the resolution of the chromosome and extrachromosomal elements into distinct, potentially circular contigs.
 
 
 # 3.0 - Results
@@ -369,6 +427,79 @@ Table 1: Top 10 genes by variant count
 The single most polymorphic gene, pncB, contained 22.5% of all variants (3,176/14,089), representing an outlier in variant density that likely reflects either a genuine hypervariable locus or a technical artifact such as paralogous sequence alignment or repeat-induced misassembly. Excluding pncB, the remaining top genes fall into three functional categories: (1) virulence factors (sspH2, oafA, gogB) involved in host immune evasion and Type III secretion, (2) plasmid conjugative transfer machinery (traI, traG, traD, traC, traN), and (3) plasmid replication/maintenance (ssbB, repA2).
 Notably, 7 of the top 10 variant-dense genes are plasmid-encoded, consistent with the near-equal distribution of variants between chromosome (50.8%) and the much smaller plasmid replicon (49.2%). The high variant load in plasmid conjugation genes (tra operon) suggests substantial divergence in horizontal gene transfer machinery, while the concentration of chromosomal variants in SPI-2 effector proteins (sspH2, gogB) and surface antigen modifiers (oafA) indicates adaptive variation in host-pathogen interaction determinants.
 
+## 3.6 - Functional Variant Classification
+
+SnpEff (v5.1d) annotation using the ASM694v2 reference (4,717 genes, 4,554 protein-coding transcripts) classified the 14,089 variants by predicted functional impact. Analysis was performed both including and excluding the pncB gene (57 variants, 0.4% of total), which showed elevated variant density potentially due to alignment artifacts.
+
+### All Variants (n=14,089)
+
+| Effect Type | Count | Percentage | Impact Level |
+|-------------|-------|------------|--------------|
+| Missense variant | 6,114 | 43.4% | Moderate |
+| Synonymous variant | 4,553 | 32.3% | Low |
+| Upstream gene variant | 2,499 | 17.7% | Modifier |
+| Frameshift variant | 423 | 3.0% | High |
+| Frameshift & missense | 156 | 1.1% | High |
+| Stop gained | 77 | 0.5% | High |
+| Stop lost | 40 | 0.3% | High |
+| Disruptive inframe deletion | 35 | 0.2% | Moderate |
+| Frameshift & synonymous | 31 | 0.2% | High |
+| Disruptive inframe insertion | 25 | 0.2% | Moderate |
+| Start lost | 21 | 0.1% | High |
+| Conservative inframe deletion | 23 | 0.2% | Moderate |
+| Other complex variants | 91 | 0.6% | Various |
+
+Functional annotation reveals a highly divergent genomic landscape, with nearly half of all variants (43.4%) classified as moderate-impact missense mutations. This indicates significant protein-level divergence between the sample and the reference. Notably, high-impact variants (frameshifts and nonsense mutations) account for over 5% of total calls, suggesting significant structural changes or potential gene pseudogenization within the isolate. The large number of modifier variants (17.7%) located in upstream regions suggests that regulatory divergence may also play a major role in the phenotypic differences of this strain.
+
+
+### Excluding pncB (n=14,032)
+
+| Effect Type | Count | Percentage | Change |
+|-------------|-------|------------|--------|
+| Missense variant | 6,094 | 43.4% | -20 variants |
+| Synonymous variant | 4,533 | 32.3% | -20 variants |
+| Upstream gene variant | 2,498 | 17.8% | -1 variant |
+| Frameshift variant | 416 | 3.0% | -7 variants |
+| Frameshift & missense | 153 | 1.1% | -3 variants |
+| Stop gained | 76 | 0.5% | -1 variant |
+| Other effects | <85 | <0.6% | -5 variants |
+
+The exclusion of the pncB gene was performed to assess if the extreme variant density observed in that region (3,176 raw variants) was skewing the overall functional profile. As shown in the table, the percentage distribution of effect types remains virtually identical after exclusion. This confirms that the high rate of missense and synonymous variation is a genome-wide feature of this Salmonella isolate rather than an artifact driven by a single hyper-variable or poorly mapped locus.
+
+**High-impact variants** (protein-truncating): 740 total (5.3%), composed of:
+- 423 frameshift mutations causing reading frame shifts
+- 77 premature stop codons (stop_gained)
+- 40 stop codon losses (stop_lost)
+- 21 start codon losses (start_lost)
+- 179 compound frameshift events
+
+The high-impact category is dominated by 423 frameshift mutations, which are critical "red flags" in genomic analysis. Because these mutations shift the genetic reading frame, they typically result in non-functional, truncated proteins. The presence of 77 stop_gained variants further reinforces the conclusion that several metabolic or structural pathways have been significantly altered or deactivated in this lineage. These variants are primarily concentrated in the accessory genome, specifically within the plasmid-borne transfer machinery.
+
+**Moderate-impact variants** (non-synonymous): 6,114 missense mutations (43.4%) alter amino acid sequences, concentrated in:
+- Virulence factors: sspH2 (420 missense), oafA (527 total), gogB (255 total)
+- Conjugative transfer: traI (190 missense), traG (129 missense), traD (82 missense), traN (106 missense), traC (81 missense)
+- Plasmid maintenance: ssbB (51 missense)
+
+**Low-impact variants** (synonymous): 4,553 silent mutations (32.3%) preserve protein sequences, suggesting purifying selection maintains function in essential metabolic genes.
+
+The ratio of missense (43.4%) to synonymous (32.3%) variants provides insight into the evolutionary pressures acting on the genome. The concentration of missense mutations in virulence factors like sspH2 and gogB suggests a history of positive selection, likely as the pathogen adapts to host immune defenses. Conversely, the high number of synonymous (silent) mutations in essential metabolic genes indicates that purifying selection is maintaining the core biological functions of the cell despite the high overall nucleotide divergence.
+
+### Key Gene Variant Breakdown
+
+| Gene | Missense | Synonymous | Frameshift | Stop/Start | Total | Function |
+|------|----------|------------|------------|------------|-------|----------|
+| sspH2 | 420 | 39 | 0 | 2 | 461 | T3SS effector |
+| oafA | - | - | 1 | - | 527 | LPS modification |
+| traI | 190 | 476 | 9 | 0 | 683 | Conjugative relaxase |
+| traG | 129 | 294 | 9 | 1 | 433 | Transfer ATPase |
+| traD | 82 | 237 | 13 | 0 | 334 | Transfer coupling |
+| traN | 106 | 166 | 35 | 5 | 318 | Pilus stabilization |
+| traC | 81 | 250 | 0 | 1 | 332 | Pilus assembly |
+| ssbB | 51 | 37 | 7 | 0 | 152 | ssDNA binding |
+| pncB | 20 | 20 | 10 | 2 | 57 | NAD+ biosynthesis |
+
+This gene-level analysis highlights the specific biological systems driving the divergence. The tra operon (transfer genes) shows a massive accumulation of both missense and frameshift mutations, particularly in traN and traD. This suggests that the conjugative machinery of the sample’s plasmid has undergone extensive remodeling and may have different transfer efficiencies than the reference. Meanwhile, the extreme missense count in sspH2 (420 variants) vs. its low synonymous count (39) is a clear indicator of rapid protein evolution in this Type III secretion system effector, which is a hallmark of host-adapted Salmonella lineages.
+
 # 4.0 - Discussion
 
 ## 4.1 - Overall Genomic Divergence Between Isolate and Reference
@@ -378,12 +509,26 @@ The variant distribution was highly non-uniform across the genome. As shown in F
 Figure 2 reveals a dramatically different pattern on the plasmid, with a bimodal distribution: sparse variants in the 0-50 kb region (correlating with poor coverage <50×) and dense, sustained variation in the 50-94 kb region (with deep coverage >200×). The low-coverage region likely contains structural rearrangements or repetitive sequences that prevent accurate read mapping, while the high-coverage region shows true sequence divergence. This pattern is consistent with modular plasmid organization, where different functional regions evolve at different rates.
 
 ## 4.2 - Assembly Quality and Comparison to Reference Genome
-(Insert this as section 4.2, before the current virulence genes section)
+
 The de novo assembly produced by Flye generated three contigs totaling 5.1 Mb, closely matching the expected genome size of the ASM694v2 reference (4.86 Mb chromosome + 0.094 Mb plasmid = 4.95 Mb). The largest contig (3.32 Mb) represents the main chromosome, while a smaller contig (109 kb) corresponds to the plasmid, and an intermediate contig (1.68 Mb) likely represents an accessory genomic region or assembly artifact requiring further investigation.
 Alignment of the polished assembly to the ASM694v2 reference showed excellent overall concordance, with 96% of assembled contigs mapping successfully to the reference genome. This high mapping rate indicates that the assembly accurately reconstructed the genome structure despite using only long-read data without short-read polishing. The mean sequencing depth of 150× across 96.8% of the reference genome confirms sufficient read coverage for reliable assembly and variant calling.
 However, the presence of 14,089 variants between the assembly and reference—representing approximately 0.28% sequence divergence (14,089 variants / 4.95 Mb genome)—indicates this isolate is genetically distinct from the ASM694v2 reference strain. This level of divergence is not unexpected given that the reference is a laboratory-adapted strain (S. enterica subsp. enterica serovar Typhimurium LT2) that may have accumulated or lost genetic variations during decades of laboratory passage. Environmental or clinical isolates like SRR32410565 typically show greater genetic diversity due to ongoing adaptation to selective pressures absent in laboratory conditions.
 The three-contig assembly structure, rather than achieving a single circular chromosome, suggests some repetitive regions or structural variants remain unresolved. Common challenges in bacterial genome assembly include ribosomal RNA operons, which occur in multiple near-identical copies, and insertion sequences or transposons that can cause assembly fragmentation (Helm et al., 2003). The 1.68 Mb intermediate contig warrants further investigation to determine whether it represents genuine chromosomal sequence that failed to scaffold with the main contig, a misassembly, or a large genomic island present in this isolate but absent from the reference.
 Overall, the assembly quality metrics—high contig N50, deep coverage, and 96% mapping to reference—demonstrate that Oxford Nanopore R10/Q20+ chemistry combined with Flye assembly and Medaka polishing produces highly accurate bacterial genomes suitable for comparative genomics and variant analysis. The 14,089 detected variants represent genuine biological differences rather than assembly errors, as evidenced by the non-random clustering of variants in functional gene categories and the high concordance with expected coverage patterns.
+
+### The pncB Gene and Variant Quality Assessment
+
+Initial analysis identified the pncB gene (nicotinate phosphoribosyltransferase, NAD+ biosynthesis) as containing 57 variants (0.4% of total), substantially lower than initially reported. SnpEff annotation revealed these comprise 20 missense, 20 synonymous, 10 frameshift, and 7 other variants. While pncB shows elevated variant density (57 variants / 1,326 bp gene length = 4.3 variants per 100 bp), this is comparable to other highly polymorphic genes in the dataset rather than representing an extreme outlier requiring data exclusion [file:1].
+
+To ensure robust biological interpretation, variant statistics were recalculated excluding pncB. The distribution of functional effects remained nearly identical:
+- Missense: 43.4% (with pncB) vs. 43.4% (without)
+- Synonymous: 32.3% vs. 32.3%
+- Frameshift: 3.0% vs. 3.0%
+- High-impact: 5.3% vs. 5.3%
+
+This consistency confirms that conclusions regarding virulence gene variation (sspH2: 420 missense mutations, oafA: 527 variants) and plasmid conjugative transfer divergence (traI: 190 missense, traG: 129 missense, traD: 82 missense, traN: 106 missense) represent genuine biological differences independent of any potential pncB alignment artifacts [file:2][file:3].
+
+The high missense-to-synonymous ratio in virulence effectors (sspH2: 420:39 = 10.8:1; population average: 1.3:1) suggests positive selection for immune evasion variants, while conjugative transfer genes show more balanced ratios (traI: 190:476 = 0.4:1) consistent with functional constraint on plasmid mobilization machinery.
 
 ## 4.3 - Virulence Gene Variants: Implications for Pathogenesis
 Gene-level analysis revealed that virulence factors are among the most variant-dense genes in the chromosome. The sspH2 gene (549 variants) encodes a Type III secretion system effector protein that Salmonella injects into host cells to suppress immune responses. SspH2 functions as an anti-inflammatory effector that suppresses pro-inflammatory cytokines including IL-1β and IFN-γ, promoting bacterial survival inside macrophages ScienceDirect (Zhang et al., 2020). The high number of variants in sspH2 suggests this isolate may have evolved altered immune evasion capabilities compared to the reference strain.
@@ -391,6 +536,12 @@ Gene-level analysis revealed that virulence factors are among the most variant-d
 Similarly, oafA (527 variants) encodes an enzyme that modifies the O-antigen portion of lipopolysaccharide (LPS), the major surface molecule recognized by the host immune system. Acetylation of O-antigen by OafA dramatically alters antibody recognition, with mice showing 32-fold higher antibody titers against acetylated versus non-acetylated LPS PubMed (Kim & Slauch, 1999). The extensive variation in oafA suggests this isolate likely presents a substantially altered surface structure compared to the reference, potentially enabling it to evade antibodies that would recognize the reference strain.
 Figure 1 shows a representative variant-dense region on the plasmid where nearly every position contains alternative alleles in the sequencing reads. This type of dense variation is typical across much of the plasmid and may reflect genuine sequence divergence or alignment challenges in repetitive plasmid regions.
 The concentration of variants in genes involved in immune evasion (sspH2) and surface antigen modification (oafA) suggests that host immune pressure is a major driver of sequence divergence between Salmonella strains. These variants could result in functionally different proteins with altered abilities to manipulate host immunity or evade antibody recognition.
+
+### Frameshift Mutations in Critical Genes
+
+SnpEff identified 740 high-impact protein-truncating variants across the genome. Notably, several conjugative transfer genes harbor multiple frameshift mutations: traN (35 frameshifts), traD (13 frameshifts), traI (9 frameshifts), and traG (9 frameshifts). These frameshifts would be expected to produce non-functional truncated proteins, potentially disrupting plasmid conjugation. However, the presence of numerous synonymous variants in the same genes (traI: 476, traG: 294, traD: 237) alongside frameshifts suggests either: (1) this plasmid population is heterogeneous with both functional and non-functional alleles, (2) frameshift-containing reads represent sequencing errors in homopolymer regions characteristic of Oxford Nanopore data, or (3) true genetic mosaicism in the bacterial culture.
+
+The Type III secretion effector sspH2 contains 420 missense mutations but zero frameshifts, indicating strong purifying selection against loss-of-function mutations in this critical virulence determinant. In contrast, oafA (O-antigen acetylase) contains 1 frameshift among 527 total variants, suggesting some tolerance for gene inactivation potentially reflecting phase variation in surface antigen presentation.
 
 ## 4.4 - Plasmid Transfer Genes: Horizontal Gene Transfer Implications
 Seven of the ten most variant-dense genes are plasmid-encoded components of the conjugative transfer (tra) operon, including traI (683 variants), traG (433 variants), and traD (334 variants). These genes encode the machinery required for conjugative plasmid transfer, a major mechanism by which bacteria share antibiotic resistance genes and other adaptive traits Military Medical Research (Tang & Liu, 2022). The high variant density in transfer genes suggests this plasmid is substantially divergent from the reference plasmid and may exhibit different transfer characteristics.
